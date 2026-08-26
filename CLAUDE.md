@@ -30,7 +30,13 @@ and stop.
 
 - **DAILY mode:** search across every topic in `interests.yaml`, allocating
   effort by `weight` (more queries/results for `high`, fewer for `low`). Gather
-  15–25 genuinely new candidate items from roughly the last 36 hours.
+  up to 15–25 genuinely new candidate items **published within the last 24
+  hours** (today or yesterday in America/Toronto). A quiet topic that turns up
+  nothing in-window is correct, not a failure — never reach for an older item
+  just because it's the most recent available (e.g. a weekly recurring
+  roundup) to fill it out. `build_feed.py` also hard-drops anything older
+  than `max_item_age_hours` (`config/interests.yaml`) as a backstop, so treat
+  the 24-hour window as the real target, not a rough guideline.
 - **INCREMENTAL mode:** search only `high`-weight topics plus a quick scan for
   anything breaking across the others. Be conservative — you are trickling in
   updates through the day, not refilling the feed.

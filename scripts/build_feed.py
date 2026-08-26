@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 try:
     from scripts import _common as C
@@ -53,6 +53,27 @@ def dedup_raw(items: list) -> list:
         seen.add(url)
         out.append(it)
     return out
+
+
+def filter_fresh(items: list, max_age_hours) -> list:
+    """Hard backstop on freshness: drop candidates older than max_age_hours.
+
+    This exists because "roughly N hours" in the research prompt is guidance,
+    not a guarantee -- an agent can still reach for the most recent edition of
+    a weekly/monthly series and call it fresh. Unset/falsy max_age_hours means
+    no cutoff (back-compat for configs that don't set it). Unparseable dates
+    fall back to "now" in parse_date(), so they're never wrongly dropped here.
+    """
+    if not max_age_hours:
+        return items
+    cutoff = C.now_local() - timedelta(hours=float(max_age_hours))
+    fresh, stale = [], []
+    for it in items:
+        (fresh if C.parse_date(it.get("published_at")) >= cutoff else stale).append(it)
+    if stale:
+        dropped = ", ".join((it.get("url") or "(no url)") for it in stale)
+        print(f"Dropping {len(stale)} candidate(s) older than {max_age_hours}h: {dropped}")
+    return fresh
 
 
 def entry_from_curated(raw: dict) -> dict:
@@ -122,7 +143,7 @@ def main() -> None:
     daily_target = int(feed_cfg.get("daily_target", window_size) or window_size)
     max_incremental = int(feed_cfg.get("max_incremental_adds", 5) or 5)
 
-    curated = dedup_raw(load_curated())
+    curated = filter_fresh(dedup_raw(load_curated()), feed_cfg.get("max_item_age_hours"))
     seen = C.read_seen()
     seen_url_set = C.seen_urls(seen)
     today = C.today_str()
