@@ -1,7 +1,7 @@
 feed:
   title: "Nick's Curated Feed"
   description: "AI-curated personal feed across tech, dev, and hobbies"
-  link: "https://nairdrie.com/feed/merged.xml"
+  link: "https://nairdrie-rss-feed.s3.us-east-1.amazonaws.com/feed/merged.xml"
   window_size: 50          # max items in the live feed
   daily_target: 50         # items to assemble in the morning full build
   max_incremental_adds: 5  # cap per non-daily run

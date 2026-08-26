@@ -48,7 +48,7 @@ ATOM_NS = "http://www.w3.org/2005/Atom"
 # ---------------------------------------------------------------------------
 # S3 coordinates (env-overridable; defaults chosen at bootstrap)
 # ---------------------------------------------------------------------------
-S3_BUCKET = os.environ.get("RSS_S3_BUCKET", "nairdrie.com")
+S3_BUCKET = os.environ.get("RSS_S3_BUCKET", "nairdrie-rss-feed")
 FEED_KEY = os.environ.get("RSS_FEED_KEY", "feed/merged.xml")
 STATE_KEY = os.environ.get("RSS_STATE_KEY", "feed/seen.json")
 AWS_REGION = (
@@ -58,10 +58,11 @@ AWS_REGION = (
     or "us-east-1"
 )
 
-# The nairdrie.com bucket is public via its static-website *bucket policy*, so
-# by default we send NO per-object ACL. Sending "public-read" would FAIL on a
-# bucket that has ACLs disabled ("bucket owner enforced" — the modern default).
-# Set RSS_FEED_ACL=public-read only if your bucket grants read via object ACLs.
+# The nairdrie-rss-feed bucket is public via a bucket *policy* scoped to
+# feed/*, so by default we send NO per-object ACL. Sending "public-read" would
+# FAIL on a bucket that has ACLs disabled ("bucket owner enforced" — the
+# modern default). Set RSS_FEED_ACL=public-read only if your bucket instead
+# grants read via object ACLs.
 FEED_ACL = os.environ.get("RSS_FEED_ACL") or None
 
 # Cache lifetime (seconds) for the feed object — short, since it changes during
@@ -222,7 +223,7 @@ def _feed_meta(interests: dict | None) -> tuple[str, str, str]:
     feed_cfg = (interests or {}).get("feed", {}) if interests else {}
     title = feed_cfg.get("title") or "Nick's Curated Feed"
     description = feed_cfg.get("description") or "AI-curated personal feed"
-    link = feed_cfg.get("link") or "https://nairdrie.com/feed/merged.xml"
+    link = feed_cfg.get("link") or "https://nairdrie-rss-feed.s3.us-east-1.amazonaws.com/feed/merged.xml"
     return title, description, link
 
 

@@ -6,18 +6,25 @@ read from and written back to these two objects on every run.
 
 ## Coordinates
 
-| Thing        | Value                                  |
-| ------------ | -------------------------------------- |
-| Bucket       | `nairdrie.com`                         |
-| Feed key     | `feed/merged.xml`                      |
-| State key    | `feed/seen.json`                       |
-| Region       | `us-east-1`                            |
-| Public URL   | `https://nairdrie.com/feed/merged.xml` |
+| Thing        | Value                                                                  |
+| ------------ | ----------------------------------------------------------------------- |
+| Bucket       | `nairdrie-rss-feed`                                                    |
+| Feed key     | `feed/merged.xml`                                                      |
+| State key    | `feed/seen.json`                                                       |
+| Region       | `us-east-1`                                                            |
+| Public URL   | `https://nairdrie-rss-feed.s3.us-east-1.amazonaws.com/feed/merged.xml` |
 
-The `nairdrie.com` bucket also serves the public website at
-[nairdrie.com](https://nairdrie.com). The scripts **only ever touch the two keys
+`nairdrie-rss-feed` is a small dedicated bucket holding nothing but the feed.
+It is **not** the `nairdrie.com` bucket that backs the AWS Amplify-hosted
+website — that was the original design, but Amplify Hosting's CloudFront
+distribution only serves objects that went through its own build/deploy
+pipeline. An object written directly via the S3 API (as this feed is, on
+every run) is invisible to it and 404s, regardless of bucket policy. A
+separate bucket with its own public-read bucket policy sidesteps that
+entirely — the feed is served straight from S3's own HTTPS endpoint, no
+CloudFront/Amplify involved. The scripts **only ever touch the two keys
 above** (both under the `feed/` prefix) — they never list, read, or write
-anything else in the bucket, so they cannot disturb the rest of the site.
+anything else in the bucket.
 
 > **Note:** because the whole bucket is public, `feed/seen.json` is publicly
 > readable too. That's harmless — it contains only article URLs and first-seen
@@ -43,33 +50,48 @@ The `state/` directory, `.env`, `*.pem`, and `.aws/` are all gitignored.
 
 ### Minimum IAM permissions
 
-The credentials only need get/put on the two feed objects:
+The credentials need get/put on the two feed objects, plus `ListBucket`
+scoped to the `feed/` prefix (without it, a request for an object that
+doesn't yet exist comes back as an ambiguous 403 instead of a clean 404,
+which `fetch_state.py`'s first-run bootstrap relies on to tell "missing"
+apart from "actually forbidden"):
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "ReadWriteFeedObjects",
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject"],
-      "Resource": "arn:aws:s3:::nairdrie.com/feed/*"
+      "Resource": "arn:aws:s3:::nairdrie-rss-feed/feed/*"
+    },
+    {
+      "Sid": "ListFeedPrefix",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::nairdrie-rss-feed",
+      "Condition": { "StringLike": { "s3:prefix": "feed/*" } }
     }
   ]
 }
 ```
 
-## Public-read / serving setup — confirm this, Nick
+## Public-read / serving setup
 
-The bucket is already public via its **static-website bucket policy**, so
-uploaded objects under `feed/` inherit public read automatically and the scripts
-send **no per-object ACL** by default. This is the right choice for buckets with
+`nairdrie-rss-feed` has **Block all public access** turned off and a
+bucket policy granting anonymous `s3:GetObject` scoped to `feed/*` only —
+see the bucket's own policy in the console for the exact statement. Objects
+under `feed/` inherit public read from that policy, so the scripts send
+**no per-object ACL** by default. This is the right choice for buckets with
 ACLs disabled ("bucket owner enforced" — the modern S3 default), where sending
 `ACL=public-read` would actually error.
 
 - If your bucket instead grants public read via **object ACLs**, set
   `RSS_FEED_ACL=public-read` and the scripts will attach it.
 - Confirm `feed/merged.xml` is reachable at
-  `https://nairdrie.com/feed/merged.xml` after the first real run.
+  `https://nairdrie-rss-feed.s3.us-east-1.amazonaws.com/feed/merged.xml`
+  after the first real run.
 
 The feed object is written with `Content-Type: application/rss+xml` and a short
 `Cache-Control: max-age=300` (tune via `RSS_FEED_CACHE_SECONDS`).
@@ -88,7 +110,7 @@ Optional overrides (all have working defaults baked into `scripts/_common.py`):
 
 | Variable                 | Default             | Meaning                                    |
 | ------------------------ | ------------------- | ------------------------------------------ |
-| `RSS_S3_BUCKET`          | `nairdrie.com`      | Bucket name                                |
+| `RSS_S3_BUCKET`          | `nairdrie-rss-feed` | Bucket name                                |
 | `RSS_FEED_KEY`           | `feed/merged.xml`   | Feed object key                            |
 | `RSS_STATE_KEY`          | `feed/seen.json`    | State/dedup object key                     |
 | `RSS_S3_REGION`          | `us-east-1`         | Overrides `AWS_REGION` for S3 only         |
@@ -103,23 +125,23 @@ The scripts do all of this with boto3, but here are the equivalent CLI commands.
 **Read (what `fetch_state.py` does):**
 
 ```bash
-aws s3 cp s3://nairdrie.com/feed/merged.xml state/feed.xml
-aws s3 cp s3://nairdrie.com/feed/seen.json  state/seen.json
+aws s3 cp s3://nairdrie-rss-feed/feed/merged.xml state/feed.xml
+aws s3 cp s3://nairdrie-rss-feed/feed/seen.json  state/seen.json
 ```
 
 ```python
 import boto3
 s3 = boto3.client("s3", region_name="us-east-1")
-s3.download_file("nairdrie.com", "feed/merged.xml", "state/feed.xml")
-s3.download_file("nairdrie.com", "feed/seen.json",  "state/seen.json")
+s3.download_file("nairdrie-rss-feed", "feed/merged.xml", "state/feed.xml")
+s3.download_file("nairdrie-rss-feed", "feed/seen.json",  "state/seen.json")
 ```
 
 **Write (what `push_state.py` does):**
 
 ```bash
-aws s3 cp state/feed.xml  s3://nairdrie.com/feed/merged.xml \
+aws s3 cp state/feed.xml  s3://nairdrie-rss-feed/feed/merged.xml \
   --content-type "application/rss+xml; charset=utf-8" --cache-control "max-age=300"
-aws s3 cp state/seen.json s3://nairdrie.com/feed/seen.json \
+aws s3 cp state/seen.json s3://nairdrie-rss-feed/feed/seen.json \
   --content-type "application/json; charset=utf-8" --cache-control "no-cache"
 ```
 
@@ -127,12 +149,12 @@ aws s3 cp state/seen.json s3://nairdrie.com/feed/seen.json \
 import boto3
 s3 = boto3.client("s3", region_name="us-east-1")
 s3.upload_file(
-    "state/feed.xml", "nairdrie.com", "feed/merged.xml",
+    "state/feed.xml", "nairdrie-rss-feed", "feed/merged.xml",
     ExtraArgs={"ContentType": "application/rss+xml; charset=utf-8",
                "CacheControl": "max-age=300"},
 )
 s3.upload_file(
-    "state/seen.json", "nairdrie.com", "feed/seen.json",
+    "state/seen.json", "nairdrie-rss-feed", "feed/seen.json",
     ExtraArgs={"ContentType": "application/json; charset=utf-8",
                "CacheControl": "no-cache"},
 )
