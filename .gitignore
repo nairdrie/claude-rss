@@ -1,0 +1,20 @@
+# Ephemeral run scratch — the source of truth lives in S3, not git.
+state/
+
+# Secrets / credentials — must never be committed.
+.env
+.env.*
+*.pem
+*.key
+.aws/
+credentials
+aws-credentials*
+*.credentials
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/

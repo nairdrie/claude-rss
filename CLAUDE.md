@@ -1,0 +1,86 @@
+# Feed curator — runbook
+
+You have been woken by a scheduled routine. Your context is this repo. Your job
+is to update Nick's personal RSS feed according to the time of day, then exit.
+Do not ask questions — there is no human in this session. Work through the steps
+and stop.
+
+## Step 0 — Determine mode
+
+- Get the current time in **America/Toronto** (timezone-aware; this makes DST
+  automatic).
+- Fetch state first (Step 1) so you can read `seen.json`'s `last_daily_write`
+  date.
+- **DAILY mode** if BOTH: (a) `last_daily_write` is not today's date in
+  America/Toronto, AND (b) the local hour is >= 6. (Primary intent: the
+  06:00–06:59 wake writes the day's feed. The "not yet done today" guard is a
+  safety net so a missed or DST-shifted 6am wake still triggers the daily write
+  on the next wake after 6am, instead of silently skipping a day.)
+- **INCREMENTAL mode** otherwise (this is the common case — most wakes).
+
+## Step 1 — Load config and state
+
+- Read `config/interests.yaml` (topics, weights, excludes, feed sizing).
+- Run `python scripts/fetch_state.py`. This populates `state/feed.xml` (current
+  live window) and `state/seen.json` (recent item URLs + `last_daily_write`). If
+  either doesn't exist in S3 yet (first ever run), the script creates empty valid
+  versions locally — proceed normally.
+
+## Step 2 — Research (use your web search tools)
+
+- **DAILY mode:** search across every topic in `interests.yaml`, allocating
+  effort by `weight` (more queries/results for `high`, fewer for `low`). Gather
+  15–25 genuinely new candidate items from roughly the last 36 hours.
+- **INCREMENTAL mode:** search only `high`-weight topics plus a quick scan for
+  anything breaking across the others. Be conservative — you are trickling in
+  updates through the day, not refilling the feed.
+
+## Step 3 — Decide what goes in
+
+- **Dedup:** drop any candidate whose URL is already in `seen.json`.
+- **Exclude:** drop anything matching the `exclude` rules in `interests.yaml`
+  (SEO/listicle slop, contentless press releases, hard paywalls).
+- **DAILY mode:** select the best ~`daily_target` items → this becomes a freshly
+  rebuilt window.
+- **INCREMENTAL mode:** select AT MOST `max_incremental_adds` items, and only
+  ones that clear a real relevance bar. **If nothing qualifies, add nothing** —
+  an empty result is correct, not a failure. Never pad the feed to look busy.
+- **Breaking news** (genuinely time-sensitive, high-signal): always admit it in
+  incremental mode, and set `"breaking": true` so it gets a `[BREAKING]` title
+  prefix. Use this sparingly and honestly — a routine software release is not
+  breaking.
+
+## Step 4 — Emit decisions
+
+Write `state/curated.json` as a JSON array; each item:
+`{ "title", "url", "source", "published_at" (ISO 8601 or RFC 822), "reason" (one line), "breaking" (bool) }`
+
+## Step 5 — Build
+
+- Run `python scripts/build_feed.py daily` or
+  `python scripts/build_feed.py incremental`.
+- The script merges/rebuilds `state/feed.xml`, updates `state/seen.json` (adds
+  new URLs, prunes entries older than ~30 days, sets `last_daily_write` to today
+  when mode is daily), and validates the output as RSS 2.0. If it exits
+  non-zero, STOP — do not push. Report what failed.
+
+## Step 6 — Push (only if something changed)
+
+- If the build produced changes, run `python scripts/push_state.py` to upload
+  `state/feed.xml` and `state/seen.json` to S3.
+- If incremental mode added nothing, skip the push and exit cleanly. (The build
+  script prints a "feed unchanged" line and leaves the files untouched in that
+  case.)
+
+## Non-negotiables
+
+- **Never push a broken or empty feed over a good one.** If research, parsing, or
+  S3 fails, exit without destroying the existing feed in S3. (`build_feed.py` and
+  `push_state.py` both refuse to write/upload an invalid or empty feed, but hold
+  to this yourself too.)
+- **Curate to Nick's interests, not to volume.** Prefer primary sources (project
+  blogs, official releases, reputable reporting) over aggregators and rewrites.
+- No questions, no chat — this is an unattended run. Do the work and stop.
+
+Read `docs/s3-access.md` for bucket/credential details and `docs/feed-schema.md`
+for the item format and `[BREAKING]` convention.

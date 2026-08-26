@@ -1,0 +1,11 @@
+# Runtime dependencies for the feed-curator scripts.
+# Install with:  python -m pip install -r requirements.txt
+#
+# All of these are pure-Python wheels — no compiler/build step, so installs
+# are fast and reliable on a minimal runtime. RSS is generated with the Python
+# standard library (xml.etree.ElementTree), so there is no feedgen/lxml build
+# dependency to fail on.
+boto3          # S3 read/write (fetch_state.py, push_state.py)
+feedparser     # parse/validate feeds round-trip (build_feed.py, push_state.py)
+pyyaml         # read config/interests.yaml
+tzdata         # IANA timezone data so ZoneInfo("America/Toronto") works anywhere

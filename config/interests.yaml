@@ -1,0 +1,44 @@
+feed:
+  title: "Nick's Curated Feed"
+  description: "AI-curated personal feed across tech, dev, and hobbies"
+  link: "https://nairdrie.com/feed/merged.xml"
+  window_size: 50          # max items in the live feed
+  daily_target: 50         # items to assemble in the morning full build
+  max_incremental_adds: 5  # cap per non-daily run
+
+topics:
+  - name: privacy/degoogle
+    detail: Rooting/de-googling a Pixel 7 Pro; GrapheneOS/LineageOS; running Claude Code locally via Termux
+    weight: high
+  - name: ai-dev-tools
+    detail: Claude Code, Claude API, MCP, AI coding-agent releases — used to build production software
+    weight: high
+  - name: linux-desktop
+    detail: KDE Plasma ricing, plasmoid development, distro news (Ubuntu/Fedora)
+    weight: medium
+  - name: electric-skateboards
+    detail: DIY esk8 builds, VESC firmware/tooling, battery pack safety
+    weight: medium
+  - name: crypto
+    detail: Bitcoin cycle/halving analysis, on-chain cycle indicators, Pine Script strategy development
+    weight: medium
+  - name: sports
+    detail: Toronto Maple Leafs (NHL), Buffalo Bills (NFL), fantasy football, sports betting markets
+    weight: medium
+  - name: 3d-printing
+    detail: FDM printing, Ender-3-class printers, hotend/extruder troubleshooting
+    weight: low
+  - name: roblox-dev
+    detail: Roblox Studio game development, Roblox + AI tooling integrations
+    weight: low
+
+founder_context:
+  detail: >
+    Founder of an AI-integrated website builder for small businesses (Claude-orchestrated
+    pipeline, RAG/pgvector). Surface relevant AI-agents-in-production, RAG, and
+    small-business-SaaS engineering content under ai-dev-tools.
+
+exclude:
+  - generic listicles / SEO content farms
+  - press releases with no new information
+  - articles behind a hard paywall
