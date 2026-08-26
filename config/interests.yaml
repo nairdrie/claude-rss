@@ -35,6 +35,16 @@ topics:
     detail: Roblox Studio game development, Roblox + AI tooling integrations
     weight: low
 
+pinned:
+  # Always injected at the very top of the feed by build_feed.py, in both
+  # daily and incremental modes -- not sourced from research, not subject to
+  # the freshness cutoff or seen.json dedup (same URL every day by design).
+  # Re-asserted on every build, so it self-heals if a run ever drops it.
+  - title: "Daily Chess Puzzle"
+    url: "https://www.chess.com/daily"
+    source: "Chess.com"
+    reason: "Today's daily puzzle."
+
 founder_context:
   detail: >
     Founder of an AI-integrated website builder for small businesses (Claude-orchestrated

@@ -233,9 +233,14 @@ def build_rss_bytes(interests: dict | None, items: list) -> bytes:
     """Build a pretty-printed RSS 2.0 document from channel meta + item dicts.
 
     Each item dict: {title, url, description, pubdate(aware datetime),
-    image(optional thumbnail URL or None)}. Items are emitted in the given
-    order (index 0 == top of feed). ElementTree escapes all text/attribute
-    content automatically.
+    image(optional thumbnail URL or None), guid(optional, defaults to url),
+    guid_is_permalink(optional bool, defaults to True)}. guid/guid_is_permalink
+    exist for pinned items whose url is stable but whose content changes daily
+    (e.g. the chess puzzle) -- giving each day's instance a distinct,
+    non-permalink guid is what makes readers treat it as a new item instead of
+    silently ignoring the "same" link. Items are emitted in the given order
+    (index 0 == top of feed). ElementTree escapes all text/attribute content
+    automatically.
     """
     title, description, link = _feed_meta(interests)
 
@@ -256,8 +261,9 @@ def build_rss_bytes(interests: dict | None, items: list) -> bytes:
         item = ET.SubElement(channel, "item")
         ET.SubElement(item, "title").text = it["title"]
         ET.SubElement(item, "link").text = it["url"]
-        guid = ET.SubElement(item, "guid", {"isPermaLink": "true"})
-        guid.text = it["url"]
+        is_permalink = it.get("guid_is_permalink", True)
+        guid = ET.SubElement(item, "guid", {"isPermaLink": "true" if is_permalink else "false"})
+        guid.text = it.get("guid") or it["url"]
         ET.SubElement(item, "description").text = it["description"]
         ET.SubElement(item, "pubDate").text = to_rfc822(it["pubdate"])
         image = it.get("image")

@@ -49,6 +49,22 @@ A channel with **no items is still valid** — that's exactly what
 | `<media:thumbnail>`   | **Optional.** Emitted only when the item has an `image`. This is what most readers (Feedly, Inoreader, NetNewsWire) look for. |
 | `<enclosure>`         | **Optional**, alongside `media:thumbnail` — a fallback for readers that only check enclosures. `type` is guessed from the image URL's extension (defaults to `image/jpeg`); `length` is always `0` since the real byte size isn't known at scrape time. |
 
+## Pinned items
+
+`interests.yaml`'s `pinned` list (currently just the daily chess puzzle) is
+always injected at the very top of the feed by `build_feed.py`, in both
+daily and incremental builds — it's never sourced from research, never
+subject to the freshness cutoff, and never deduped against `seen.json`. A
+pinned item's `url` is expected to stay the same day to day while its real
+content changes server-side (e.g. `chess.com/daily` always shows *today's*
+puzzle) — build_feed.py works around this by giving each day's instance a
+distinct `<guid isPermaLink="false">url#YYYY-MM-DD</guid>`, so readers treat
+each day's puzzle as a new item even though the `<link>` itself never
+changes. Every build re-evicts any existing item with the pinned url and
+re-inserts the freshly-built one, so a stale or missing pinned item
+self-heals on the very next run (daily or incremental) rather than waiting
+for tomorrow's rebuild.
+
 ## `[BREAKING]` convention
 
 When a curated item has `"breaking": true`, `build_feed.py` prefixes its
