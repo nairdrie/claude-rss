@@ -18,6 +18,7 @@ values stay out of the code while the scripts keep working defaults. See
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime, parsedate_to_datetime
@@ -43,6 +44,7 @@ SEEN_PATH = STATE_DIR / "seen.json"
 CURATED_PATH = STATE_DIR / "curated.json"
 
 ATOM_NS = "http://www.w3.org/2005/Atom"
+MEDIA_NS = "http://search.yahoo.com/mrss/"
 
 
 # ---------------------------------------------------------------------------
@@ -230,13 +232,14 @@ def _feed_meta(interests: dict | None) -> tuple[str, str, str]:
 def build_rss_bytes(interests: dict | None, items: list) -> bytes:
     """Build a pretty-printed RSS 2.0 document from channel meta + item dicts.
 
-    Each item dict: {title, url, description, pubdate(aware datetime)}. Items are
-    emitted in the given order (index 0 == top of feed). ElementTree escapes all
-    text/attribute content automatically.
+    Each item dict: {title, url, description, pubdate(aware datetime),
+    image(optional thumbnail URL or None)}. Items are emitted in the given
+    order (index 0 == top of feed). ElementTree escapes all text/attribute
+    content automatically.
     """
     title, description, link = _feed_meta(interests)
 
-    rss = ET.Element("rss", {"version": "2.0", "xmlns:atom": ATOM_NS})
+    rss = ET.Element("rss", {"version": "2.0", "xmlns:atom": ATOM_NS, "xmlns:media": MEDIA_NS})
     channel = ET.SubElement(rss, "channel")
     ET.SubElement(channel, "title").text = title
     ET.SubElement(channel, "link").text = link
@@ -257,6 +260,15 @@ def build_rss_bytes(interests: dict | None, items: list) -> bytes:
         guid.text = it["url"]
         ET.SubElement(item, "description").text = it["description"]
         ET.SubElement(item, "pubDate").text = to_rfc822(it["pubdate"])
+        image = it.get("image")
+        if image:
+            mime, _ = mimetypes.guess_type(image)
+            if not mime or not mime.startswith("image/"):
+                mime = "image/jpeg"
+            # media:thumbnail is what most readers (Feedly, Inoreader, NetNewsWire)
+            # look for; the enclosure is a widely-supported fallback for the rest.
+            ET.SubElement(item, "media:thumbnail", {"url": image})
+            ET.SubElement(item, "enclosure", {"url": image, "type": mime, "length": "0"})
 
     ET.indent(rss, space="  ")
     return ET.tostring(rss, encoding="utf-8", xml_declaration=True)

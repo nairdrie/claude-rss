@@ -70,6 +70,7 @@ def entry_from_curated(raw: dict) -> dict:
         "url": (raw.get("url") or "").strip(),
         "description": description or title,
         "pubdate": C.parse_date(raw.get("published_at")),
+        "image": (raw.get("image") or "").strip() or None,
     }
 
 
@@ -80,11 +81,21 @@ def entry_from_existing(e) -> dict:
     else:
         pub = C.parse_date(e.get("published"))
     title = e.get("title") or "(untitled)"
+    image = None
+    thumbs = e.get("media_thumbnail") or []
+    if thumbs:
+        image = thumbs[0].get("url")
+    if not image:
+        for enc in e.get("enclosures") or []:
+            if str(enc.get("type", "")).startswith("image/"):
+                image = enc.get("href") or enc.get("url")
+                break
     return {
         "title": title,
         "url": url,
         "description": e.get("summary") or title,
         "pubdate": pub,
+        "image": image,
     }
 
 

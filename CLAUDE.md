@@ -55,6 +55,14 @@ and stop.
 Write `state/curated.json` as a JSON array; each item:
 `{ "title", "url", "source", "published_at" (ISO 8601 or RFC 822), "reason" (one line), "breaking" (bool) }`
 
+## Step 4.5 — Thumbnails
+
+- Run `python scripts/fetch_thumbnails.py`. It scrapes each curated item's
+  `og:image` (best-effort, stdlib-only) and adds an `"image"` field to
+  `curated.json` where found.
+- This is never a reason to stop the run — a missing thumbnail just means
+  that item renders without one. Don't chase failures here.
+
 ## Step 5 — Build
 
 - Run `python scripts/build_feed.py daily` or
