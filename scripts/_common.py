@@ -45,6 +45,7 @@ CURATED_PATH = STATE_DIR / "curated.json"
 
 ATOM_NS = "http://www.w3.org/2005/Atom"
 MEDIA_NS = "http://search.yahoo.com/mrss/"
+DC_NS = "http://purl.org/dc/elements/1.1/"
 
 
 # ---------------------------------------------------------------------------
@@ -234,17 +235,23 @@ def build_rss_bytes(interests: dict | None, items: list) -> bytes:
 
     Each item dict: {title, url, description, pubdate(aware datetime),
     image(optional thumbnail URL or None), guid(optional, defaults to url),
-    guid_is_permalink(optional bool, defaults to True)}. guid/guid_is_permalink
+    guid_is_permalink(optional bool, defaults to True),
+    source_name/source_url(optional)}. guid/guid_is_permalink
     exist for pinned items whose url is stable but whose content changes daily
     (e.g. the chess puzzle) -- giving each day's instance a distinct,
     non-permalink guid is what makes readers treat it as a new item instead of
-    silently ignoring the "same" link. Items are emitted in the given order
+    silently ignoring the "same" link. source_name/source_url give each item its
+    own originating "channel" so the single feed reads as an aggregation of many:
+    source_name is emitted both as the RSS 2.0 <source> element (the spec's
+    per-item channel-of-origin) and as <dc:creator> (the byline most readers
+    actually render per item). Items are emitted in the given order
     (index 0 == top of feed). ElementTree escapes all text/attribute content
     automatically.
     """
     title, description, link = _feed_meta(interests)
 
-    rss = ET.Element("rss", {"version": "2.0", "xmlns:atom": ATOM_NS, "xmlns:media": MEDIA_NS})
+    rss = ET.Element("rss", {"version": "2.0", "xmlns:atom": ATOM_NS,
+                             "xmlns:media": MEDIA_NS, "xmlns:dc": DC_NS})
     channel = ET.SubElement(rss, "channel")
     ET.SubElement(channel, "title").text = title
     ET.SubElement(channel, "link").text = link
@@ -266,6 +273,16 @@ def build_rss_bytes(interests: dict | None, items: list) -> bytes:
         guid.text = it.get("guid") or it["url"]
         ET.SubElement(item, "description").text = it["description"]
         ET.SubElement(item, "pubDate").text = to_rfc822(it["pubdate"])
+        # Per-item source ("originating channel") so the single feed reads as an
+        # aggregation of distinct sources rather than one monolithic channel.
+        # <source> is the RSS 2.0 element for exactly this; <dc:creator> carries
+        # the same name because it's the byline most readers surface per item.
+        source_name = (it.get("source_name") or "").strip()
+        if source_name:
+            # <source>'s url attribute is required; fall back to the item link.
+            source_url = (it.get("source_url") or "").strip() or it["url"]
+            ET.SubElement(item, "source", {"url": source_url}).text = source_name
+            ET.SubElement(item, "dc:creator").text = source_name
         image = it.get("image")
         if image:
             mime, _ = mimetypes.guess_type(image)

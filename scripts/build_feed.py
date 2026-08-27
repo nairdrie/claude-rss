@@ -94,6 +94,34 @@ def domain_of(url: str) -> str:
     return host[4:] if host.startswith("www.") else host
 
 
+def homepage_of(url: str) -> str:
+    """`scheme://host/` for a URL, used as the per-item <source> link.
+
+    The RSS <source> element's url attribute is meant to point at the source's
+    feed; we don't have that, so the source's homepage is the best stable link
+    we can offer. Returns '' when the URL has no host we can parse.
+    """
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return ""
+    if not parts.netloc:
+        return ""
+    return f"{parts.scheme or 'https'}://{parts.netloc}/"
+
+
+def source_fields(url: str, explicit: str = "") -> tuple[str, str]:
+    """(display name, homepage link) for an item's per-item <source>.
+
+    Name is the curator-provided `source` when present, else the bare domain
+    ('techcrunch.com') so every item still gets a distinct origin instead of
+    falling back to the one channel title. Link is the article's homepage.
+    Either may be '' when the URL is unparseable and no source was given.
+    """
+    name = (explicit or "").strip() or domain_of(url)
+    return name, homepage_of(url)
+
+
 def topic_of(raw: dict) -> str:
     """Interleave bucket key: explicit `topic`, else `source`, else url domain.
 
@@ -173,17 +201,21 @@ def entry_from_curated(raw: dict) -> dict:
         title = f"[BREAKING] {title}"
     reason = (raw.get("reason") or "").strip()
     source = (raw.get("source") or "").strip()
+    url = (raw.get("url") or "").strip()
     if reason and source:
         description = f"{reason} — Source: {source}"
     else:
         description = reason or (f"Source: {source}" if source else "")
+    source_name, source_url = source_fields(url, source)
     return {
         "title": title,
-        "url": (raw.get("url") or "").strip(),
+        "url": url,
         "description": description or title,
         "pubdate": C.parse_date(raw.get("published_at")),
         "image": (raw.get("image") or "").strip() or None,
         "topic": topic_of(raw),
+        "source_name": source_name,
+        "source_url": source_url,
     }
 
 
@@ -207,6 +239,19 @@ def entry_from_existing(e) -> dict:
             if str(enc.get("type", "")).startswith("image/"):
                 image = enc.get("href") or enc.get("url")
                 break
+    # Recover the per-item <source> feedparser exposes as e.source so an
+    # incremental rebuild re-emits it instead of stripping every existing
+    # item's origin back to the bare channel. Fall back to the domain when a
+    # pre-source item is still in the window.
+    src = e.get("source") or {}
+    src_name, src_url = "", ""
+    if isinstance(src, dict):
+        src_name = (src.get("title") or "").strip()
+        src_url = (src.get("href") or src.get("url") or "").strip()
+    if not src_name or not src_url:
+        fb_name, fb_url = source_fields(url)
+        src_name = src_name or fb_name
+        src_url = src_url or fb_url
     return {
         "title": title,
         "url": url,
@@ -214,6 +259,8 @@ def entry_from_existing(e) -> dict:
         "pubdate": pub,
         "image": image,
         "guid": e.get("id") or url,
+        "source_name": src_name,
+        "source_url": src_url,
     }
 
 
@@ -255,6 +302,7 @@ def build_pinned(interests: dict, today: str) -> list:
             description = f"{reason} — Source: {source}"
         else:
             description = reason or (f"Source: {source}" if source else title)
+        source_name, source_url = source_fields(url, source)
         out.append({
             "title": f"{title} — {today}",
             "url": url,
@@ -263,6 +311,8 @@ def build_pinned(interests: dict, today: str) -> list:
             "image": (p.get("image") or "").strip() or None,
             "guid": f"{url}#{today}",
             "guid_is_permalink": False,
+            "source_name": source_name,
+            "source_url": source_url,
         })
     return out
 

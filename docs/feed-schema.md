@@ -32,6 +32,8 @@ A channel with **no items is still valid** — that's exactly what
   <guid isPermaLink="true">https://www.anthropic.com/news/mcp-registry</guid>
   <pubDate>Tue, 26 Aug 2026 13:20:00 -0400</pubDate>
   <description>First-party MCP server discovery — relevant to the Claude-orchestrated pipeline. — Source: Anthropic</description>
+  <source url="https://www.anthropic.com/">Anthropic</source>
+  <dc:creator>Anthropic</dc:creator>
   <media:thumbnail url="https://www.anthropic.com/images/mcp-registry-og.png"/>
   <enclosure url="https://www.anthropic.com/images/mcp-registry-og.png" type="image/png" length="0"/>
 </item>
@@ -46,6 +48,8 @@ A channel with **no items is still valid** — that's exactly what
 | `<pubDate>`           | **RFC 822**, timezone-aware (e.g. `Tue, 26 Aug 2026 13:20:00 -0400`), always in the configured local zone. The build assigns the live feed a **staggered, strictly-decreasing timeline** (see the ordering note below) rather than echoing `published_at` verbatim — otherwise a whole daily window of date-only items would collapse onto a single local-midnight timestamp. `published_at` still drives the freshness cutoff and per-topic recency ordering. |
 | `<title>`             | The headline. **Breaking items are prefixed with `[BREAKING] `** (see below).          |
 | `<description>`       | The one-line curation `reason`, with `— Source: <source>` appended when a source is given. |
+| `<source>`            | **Per-item channel of origin** — the RSS 2.0 element whose text is "the name of the RSS channel that the item came from." This is what makes the single feed read as an *aggregation of distinct sources* instead of one monolithic "Nick's Curated Feed" channel. Text is the curated `source` (`Anthropic`, `CoinDesk`, `Chess.com`); when an item has no `source`, it falls back to the article's bare domain (`sportsnet.ca`) so every item still gets a distinct origin. The required `url` attribute points at the source's homepage (`scheme://host/`) — the best stable link we have without knowing the source's real feed URL. |
+| `<dc:creator>`        | The same source name as `<source>`, emitted under the Dublin Core namespace (`xmlns:dc` on the root). `<source>` is the spec-correct "origin" element but many readers don't surface it in a single-subscription view; `<dc:creator>` is the byline element those readers (Feedly, Inoreader, NetNewsWire, Miniflux, Reeder) *do* render per item, so the per-source attribution is actually visible. |
 | `<media:thumbnail>`   | **Optional.** Emitted only when the item has an `image`. This is what most readers (Feedly, Inoreader, NetNewsWire) look for. |
 | `<enclosure>`         | **Optional**, alongside `media:thumbnail` — a fallback for readers that only check enclosures. `type` is guessed from the image URL's extension (defaults to `image/jpeg`); `length` is always `0` since the real byte size isn't known at scrape time. |
 
