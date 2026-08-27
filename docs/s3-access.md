@@ -118,6 +118,53 @@ Optional overrides (all have working defaults baked into `scripts/_common.py`):
 | `RSS_FEED_CACHE_SECONDS` | `300`               | `Cache-Control: max-age` on the feed       |
 | `RSS_TIMEZONE`           | `America/Toronto`   | Timezone for mode logic and dates          |
 
+## Network egress (thumbnails)
+
+Most of the pipeline only needs the two S3 objects above and the web-search
+tools the curator agent uses — none of which require broad outbound network
+access. **Thumbnails are the exception.** `scripts/fetch_thumbnails.py` fetches
+each curated item's *article page directly* (plain `urllib`, through whatever
+proxy the runtime sets) to read its `og:image`. That means it needs outbound
+HTTPS to arbitrary news/sports/finance/etc. domains.
+
+If the feed environment runs under a restrictive network policy, the egress
+proxy refuses the connection to those domains (an HTTPS `CONNECT` denied with
+`403`), every scrape fails, and the feed renders with no images. This is *not* a
+code bug — `fetch_thumbnails.py` degrades quietly and prints a summary like:
+
+```
+Thumbnails: 0 scraped, … 48 fetch failures (of 48 attempted) …
+  fetch failures: egress-blocked×48
+  NOTE: most fetches were denied — the environment's network egress policy is
+  blocking these domains …
+```
+
+There are two ways to get thumbnails anyway:
+
+**1. Scrape from a runner that has internet (recommended).** Run
+`scripts/backfill_thumbnails.py` *outside* the routine's sandbox — on GitHub's
+runners (see `.github/workflows/backfill-thumbnails.yml`), your laptop, or any
+cron box. It pulls the live feed from S3, adds a `<media:thumbnail>` to every
+item missing one, and writes it back (conditional-write, so it never clobbers a
+concurrent routine build). This keeps the routine's environment locked down and
+decouples thumbnail scraping from it entirely. See the README → Thumbnails.
+
+**2. Broaden the routine environment's network access** so the in-routine
+`fetch_thumbnails.py` can reach article domains directly:
+
+- On Claude Code on the web, pick a more permissive network policy when
+  creating/editing the environment the routine runs in (see
+  <https://code.claude.com/docs/en/claude-code-on-the-web> → network access).
+  A full-egress policy works; an allowlist works too, but the set of domains a
+  curated feed links to is open-ended, so a broad policy is the practical
+  choice.
+- Self-hosted/other runtimes: allow outbound 443 (or point `HTTPS_PROXY` at a
+  proxy that permits these hosts).
+
+The curator agent's web-search results are unaffected either way — only the
+direct `og:image` scrape depends on this. When egress is blocked, everything
+else (research, dedup, build, push) still works; you just get a text-only feed.
+
 ## Command reference
 
 The scripts do all of this with boto3, but here are the equivalent CLI commands.

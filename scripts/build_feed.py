@@ -16,12 +16,21 @@ from __future__ import annotations
 
 import json
 import sys
+from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 try:
     from scripts import _common as C
 except ImportError:  # invoked as: python scripts/build_feed.py
     import _common as C
+
+
+# Spacing between the synthetic, strictly-decreasing pubDates we assign so the
+# feed has a clean, orderable timeline instead of a wall of identical midnights
+# (see stagger_pubdates). 13 minutes keeps a full 50-item daily window inside
+# the last ~11 hours -- recent, plausible, and well within max_item_age_hours.
+STAGGER_GAP = timedelta(minutes=13)
 
 
 def load_curated() -> list:
@@ -76,6 +85,88 @@ def filter_fresh(items: list, max_age_hours) -> list:
     return fresh
 
 
+def domain_of(url: str) -> str:
+    """Bare registrable-ish host for a URL ('www.' stripped), '' if unparseable."""
+    try:
+        host = (urlsplit(url).netloc or "").lower()
+    except ValueError:
+        return ""
+    return host[4:] if host.startswith("www.") else host
+
+
+def topic_of(raw: dict) -> str:
+    """Interleave bucket key: explicit `topic`, else `source`, else url domain.
+
+    The curator is asked to tag each item with a `topic` (see docs/feed-schema.md)
+    so the daily build can spread topics across the window instead of emitting a
+    block of crypto followed by a block of tech. When it's missing we fall back
+    to the source/domain, which still separates most outlets reasonably.
+    """
+    for key in ("topic", "source"):
+        val = (raw.get(key) or "").strip()
+        if val:
+            return val.lower()
+    return domain_of((raw.get("url") or "").strip()) or "misc"
+
+
+def interleave_by_topic(items: list) -> list:
+    """Spread each topic's items evenly across the list so the feed mixes.
+
+    Items are assumed pre-sorted within a topic (newest/most-relevant first).
+    Each item is placed at the fractional position (i + 0.5) / n within its
+    topic, then everything is sorted by that fraction -- so a topic with 2 items
+    lands them near 1/4 and 3/4 of the way down while a topic with 10 items
+    fans out evenly, and no single topic clusters. Stable on equal fractions,
+    preserving within-topic order.
+    """
+    buckets = OrderedDict()
+    for it in items:
+        buckets.setdefault(it.get("topic") or "misc", []).append(it)
+    ranked = []
+    for bucket in buckets.values():
+        n = len(bucket)
+        for i, it in enumerate(bucket):
+            ranked.append(((i + 0.5) / n, it))
+    ranked.sort(key=lambda pair: pair[0])
+    return [it for _, it in ranked]
+
+
+def stagger_pubdates(items: list, anchor: datetime, gap: timedelta = STAGGER_GAP) -> None:
+    """Assign strictly-decreasing synthetic pubDates from just below `anchor`.
+
+    Curated items usually carry only a publication *date* -- web research rarely
+    surfaces an exact time -- which parse_date resolves to local midnight. Left
+    alone, a whole daily window lands on the same 00:00:00 timestamp: readers
+    can't order it and the interleaved topic mix collapses under their pubDate
+    sort. Freshness is already enforced upstream on the raw published_at, so here
+    we're free to overwrite the live feed's timeline with clean, monotonically
+    decreasing stamps that preserve the order we chose. Mutates in place.
+    """
+    when = anchor - gap
+    for it in items:
+        it["pubdate"] = when
+        when -= gap
+
+
+def stagger_incremental(new_items: list, existing: list, ceiling: datetime) -> None:
+    """Time-stamp an incremental trickle strictly above the existing window.
+
+    New items must outrank everything already in the feed (they're the fresh
+    additions) while staying below the pinned item at `ceiling` (now). We space
+    them evenly in the open interval between the newest existing item and
+    `ceiling`, so no matter how close two builds land they never collide with,
+    or sink beneath, the live window. Mutates in place.
+    """
+    if not new_items:
+        return
+    floor = max((it["pubdate"] for it in existing), default=ceiling - STAGGER_GAP)
+    if floor >= ceiling:  # no room (e.g. a build moments ago) -- open a gap
+        floor = ceiling - STAGGER_GAP
+    step = (ceiling - floor) / (len(new_items) + 1)
+    for i, it in enumerate(new_items, start=1):
+        it["pubdate"] = ceiling - step * i
+
+
 def entry_from_curated(raw: dict) -> dict:
     title = (raw.get("title") or "(untitled)").strip()
     if raw.get("breaking"):
@@ -92,13 +183,18 @@ def entry_from_curated(raw: dict) -> dict:
         "description": description or title,
         "pubdate": C.parse_date(raw.get("published_at")),
         "image": (raw.get("image") or "").strip() or None,
+        "topic": topic_of(raw),
     }
 
 
 def entry_from_existing(e) -> dict:
     url = e.get("link") or e.get("id") or ""
     if getattr(e, "published_parsed", None):
-        pub = datetime(*e.published_parsed[:6], tzinfo=timezone.utc)
+        # feedparser normalizes published_parsed to UTC; convert back to the
+        # configured local zone so re-emitted items keep the same -0400/-0500
+        # display as freshly built ones instead of flipping to +0000 on every
+        # incremental rebuild (same instant, but a jarringly mixed feed).
+        pub = datetime(*e.published_parsed[:6], tzinfo=timezone.utc).astimezone(C.tz())
     else:
         pub = C.parse_date(e.get("published"))
     title = e.get("title") or "(untitled)"
@@ -204,8 +300,14 @@ def main() -> None:
                   "live feed with an empty one.", file=sys.stderr)
             sys.exit(1)
         items = [entry_from_curated(r) for r in curated]
+        # Pick the top set by recency/curation first, then interleave topics so
+        # the window reads as a mix rather than a block per topic, then lay a
+        # clean descending timeline over it (see stagger_pubdates) so a reader's
+        # pubDate sort preserves that mix instead of collapsing on midnight.
         items.sort(key=lambda it: it["pubdate"], reverse=True)  # newest first
         selected = items[: min(daily_target, window_size)]
+        selected = interleave_by_topic(selected)
+        stagger_pubdates(selected, anchor=C.now_local())
         window = pin_to_top(selected, pinned, window_size)
         new_urls = [it["url"] for it in selected]
     else:  # incremental
@@ -221,6 +323,13 @@ def main() -> None:
         fresh_raw.sort(key=lambda r: 0 if r.get("breaking") else 1)
         fresh_raw = fresh_raw[:max_incremental]  # safety cap on top of the agent's own
         new_items = [entry_from_curated(r) for r in fresh_raw]
+        # Stamp the trickle above the existing window (breaking-first order
+        # preserved) so it sits on top and never inherits a midnight tie. The
+        # floor ignores pinned items -- they live at ~now and get re-pinned to
+        # the top regardless, so counting them would leave zero room.
+        pinned_urls = {p["url"] for p in pinned}
+        floor_items = [it for it in existing if it["url"] not in pinned_urls]
+        stagger_incremental(new_items, floor_items, C.now_local())
         # A pinned item whose guid isn't in the live feed is missing or stale
         # (e.g. still showing yesterday's puzzle) -- rebuild even with zero
         # new researched items so it self-heals instead of waiting on content.

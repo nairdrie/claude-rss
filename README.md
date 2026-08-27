@@ -60,7 +60,11 @@ scripts/
   fetch_state.py        # S3 -> state/  (creates empty valid files on first run)
   build_feed.py         # curated.json + state -> feed.xml + seen.json
   push_state.py         # state/ -> S3  (refuses to push a broken/empty feed)
+  fetch_thumbnails.py   # scrape og:image into curated.json (in-routine step)
+  backfill_thumbnails.py# scrape og:image into the LIVE feed, out-of-band (see Thumbnails)
   _common.py            # shared config, paths, S3 client, feed helpers
+.github/workflows/
+  backfill-thumbnails.yml # scheduled thumbnail scrape on GitHub's runners
 docs/
   s3-access.md          # bucket, keys, credentials, exact commands
   feed-schema.md        # RSS item format, guid/dedup, [BREAKING] convention
@@ -94,6 +98,46 @@ https://nairdrie.com/feed/merged.xml
 
 Content-Type is `application/rss+xml` with a short cache. See
 [`docs/s3-access.md`](docs/s3-access.md) for the public-read setup to confirm.
+
+## Thumbnails (`<media:thumbnail>`)
+
+Feed items can carry a thumbnail scraped from the article's `og:image`. Getting
+one requires **fetching the article page**, and here's the catch: the Claude
+curator routine runs in a sandbox whose egress policy blocks arbitrary article
+domains (news, sports, finance, …). So the in-routine step,
+`scripts/fetch_thumbnails.py`, only ever succeeds for the handful of allowlisted
+domains — everything else comes back `egress-blocked`. This is a property of the
+run environment, **not** a bug in the scraper.
+
+There are two ways to actually get thumbnails; pick one:
+
+1. **Backfill from a runner that has internet (recommended).**
+   `scripts/backfill_thumbnails.py` pulls the live feed from S3, adds a
+   `<media:thumbnail>` to every item missing one, and writes it back — touching
+   nothing else (pubDates, guids, ordering, `seen.json` are all left as-is). It
+   refuses to upload an invalid feed and uses a conditional write so it never
+   clobbers a routine build that landed underneath it.
+
+   ```bash
+   # anywhere with open internet + AWS creds (your laptop, a cron box, CI):
+   python -m pip install -r requirements.txt
+   python scripts/backfill_thumbnails.py            # enrich the live S3 feed
+   python scripts/backfill_thumbnails.py --dry-run  # scrape + report, write nothing
+   python scripts/backfill_thumbnails.py --file state/feed.xml  # a local feed file
+   ```
+
+   To automate it, [`.github/workflows/backfill-thumbnails.yml`](.github/workflows/backfill-thumbnails.yml)
+   runs this hourly on GitHub's runners (which have full internet). One-time
+   setup: add `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (and optionally
+   `AWS_REGION`) as repo **Actions secrets**, scoped to the two feed objects per
+   `docs/s3-access.md`. Thumbnails it adds persist through the routine's
+   incremental builds; a daily rebuild starts a fresh window, so the hourly run
+   refills it.
+
+2. **Open the routine's egress instead.** If you'd rather keep it in the
+   routine, broaden the feed environment's network policy so
+   `fetch_thumbnails.py` can reach article domains — no separate job needed. See
+   [`docs/s3-access.md`](docs/s3-access.md) → Network egress.
 
 ## What the runtime needs (AWS credentials + env vars)
 
