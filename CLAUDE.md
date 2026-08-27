@@ -62,7 +62,20 @@ and stop.
 ## Step 4 — Emit decisions
 
 Write `state/curated.json` as a JSON array; each item:
-`{ "title", "url", "source", "published_at" (ISO 8601 or RFC 822), "reason" (one line), "breaking" (bool) }`
+`{ "title", "url", "source", "topic", "published_at" (ISO 8601 or RFC 822), "reason" (one line), "breaking" (bool) }`
+
+- **`topic`** — the `interests.yaml` topic the item belongs to (`crypto`,
+  `dev-tools`, `sports`, …). Set it whenever you can: the daily build interleaves
+  the window by topic so it reads as a mix instead of a wall of crypto followed
+  by a wall of tech. Omitting it falls back to the source/domain, which mixes
+  less cleanly.
+- **`published_at`** — record a real **time of day** when the research gives you
+  one (a full `2026-08-26T14:30:00-04:00` timestamp), not just the date. A bare
+  date resolves to local midnight; the build then has to synthesize a time for
+  it, so the truer the input, the truer the per-topic ordering. (The build
+  always lays a clean staggered timeline over the window regardless — you'll
+  never get a wall of identical midnights — but real times still order items
+  within a topic. See `docs/feed-schema.md`.)
 
 You never need to curate the daily chess puzzle yourself — `build_feed.py`
 always injects it at the top of the feed from `interests.yaml`'s `pinned`
@@ -76,6 +89,13 @@ wake if it's ever missing or stale.
   `curated.json` where found.
 - This is never a reason to stop the run — a missing thumbnail just means
   that item renders without one. Don't chase failures here.
+- Scraping needs outbound network access to each article's domain. If the run
+  environment's egress policy blocks that, the step prints an `egress-blocked`
+  summary and the feed is simply text-only — that's expected, not an error to
+  fix from this session. Enabling thumbnails is an environment-config change
+  (see `docs/s3-access.md` → Network egress). If a research agent already put an
+  `image` on an item, this step leaves it as-is, so you can supply one directly
+  when you happen to have it.
 
 ## Step 5 — Build
 

@@ -43,7 +43,7 @@ A channel with **no items is still valid** — that's exactly what
 | --------------------- | -------------------------------------------------------------------------------------- |
 | `<guid>`              | **The article URL.** This is the dedup key — it must match the `url` recorded in `seen.json`. Emitted with `isPermaLink="true"`. |
 | `<link>`              | The article URL (same value as the guid).                                              |
-| `<pubDate>`           | **RFC 822**, timezone-aware (e.g. `Tue, 26 Aug 2026 13:20:00 -0400`). Parsed from the curated item's `published_at`, which may be ISO 8601 or RFC 822 on input. |
+| `<pubDate>`           | **RFC 822**, timezone-aware (e.g. `Tue, 26 Aug 2026 13:20:00 -0400`), always in the configured local zone. The build assigns the live feed a **staggered, strictly-decreasing timeline** (see the ordering note below) rather than echoing `published_at` verbatim — otherwise a whole daily window of date-only items would collapse onto a single local-midnight timestamp. `published_at` still drives the freshness cutoff and per-topic recency ordering. |
 | `<title>`             | The headline. **Breaking items are prefixed with `[BREAKING] `** (see below).          |
 | `<description>`       | The one-line curation `reason`, with `— Source: <source>` appended when a source is given. |
 | `<media:thumbnail>`   | **Optional.** Emitted only when the item has an `image`. This is what most readers (Feedly, Inoreader, NetNewsWire) look for. |
@@ -75,9 +75,16 @@ software release is not breaking.
 ## Rolling window vs. history
 
 - The live feed is a **rolling window of the `window_size` newest items**
-  (default 50). In daily mode the window is rebuilt newest-by-`pubDate`; in
-  incremental mode new items are prepended (breaking first) and the tail is
-  trimmed back to `window_size`.
+  (default 50). In daily mode the window is selected by recency/curation, then
+  **interleaved across topics** so it reads as a mix, then given a clean
+  **staggered timeline**: strictly-decreasing synthetic `pubDate`s spaced a few
+  minutes apart, anchored just below "now". This keeps a reader's pubDate sort
+  from collapsing the date-only items (which would otherwise all be local
+  midnight) and preserves the interleaved order. Within a topic, items with a
+  real `published_at` time still sort newest-first before the stagger is laid
+  down. In incremental mode new items are stamped just above the existing
+  window (breaking first) and the tail is trimmed back to `window_size`. The
+  pinned item always sits on top at "now".
 - Items that age out of the window **disappear from `feed.xml`** but their URLs
   **remain in `seen.json`** so they're never re-added. `seen.json` entries are
   pruned after ~30 days, at which point a still-relevant story could resurface.
@@ -92,6 +99,7 @@ writes. Each item:
   "title": "Anthropic ships MCP connector registry",
   "url": "https://www.anthropic.com/news/mcp-registry",
   "source": "Anthropic",
+  "topic": "dev-tools",
   "published_at": "2026-08-26T13:20:00-04:00",
   "reason": "First-party MCP server discovery — relevant to the pipeline.",
   "breaking": false,
@@ -100,11 +108,24 @@ writes. Each item:
 ```
 
 `url` is required (items without one are skipped). `published_at` accepts ISO
-8601 or RFC 822; anything unparseable falls back to the current time. `image`
-is optional and usually absent at this stage — `scripts/fetch_thumbnails.py`
+8601 or RFC 822; anything unparseable falls back to the current time. **Prefer a
+full timestamp with a real time of day** (`2026-08-26T13:20:00-04:00`) when the
+research surfaces one — a bare date (`2026-08-26`) resolves to local midnight,
+and see the pubDate/ordering note below for how the build treats that.
+
+`topic` is optional but recommended: set it to the item's `interests.yaml`
+topic (`crypto`, `dev-tools`, `sports`, …). The daily build uses it to
+interleave the window so it reads as a topic mix rather than a block of crypto
+followed by a block of tech. When absent, the build falls back to the `source`
+(then the URL's domain) as the interleave key.
+
+`image` is optional and usually absent at this stage — `scripts/fetch_thumbnails.py`
 fills it in afterward by scraping each item's `og:image` (see Step 4.5 in
 `CLAUDE.md`). An item that already has an `image` (e.g. a research agent
-found one directly) is left untouched by that step.
+found one directly) is left untouched by that step. Scraping needs outbound
+network access to the article's domain; if the feed environment's egress policy
+blocks it, thumbnails stay empty and the step logs an egress note (see
+`docs/s3-access.md` → Network egress).
 
 ## `seen.json` (state)
 
