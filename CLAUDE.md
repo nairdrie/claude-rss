@@ -78,9 +78,10 @@ Write `state/curated.json` as a JSON array; each item:
   within a topic. See `docs/feed-schema.md`.)
 
 You never need to curate the daily chess puzzle yourself — `build_feed.py`
-always injects it at the top of the feed from `interests.yaml`'s `pinned`
-list, in both daily and incremental builds, so it self-heals on the next
-wake if it's ever missing or stale.
+injects it from `interests.yaml`'s `pinned` list. The **daily** build pins it
+to the top of the freshly rebuilt window; **incremental** builds leave it
+where it is, so the day's additions land above it and it gradually sinks down
+the feed. Each morning's daily rebuild puts that day's puzzle back on top.
 
 ## Step 4.5 — Thumbnails
 
@@ -95,7 +96,8 @@ wake if it's ever missing or stale.
   Thumbnails are normally filled in **out-of-band** by
   `scripts/backfill_thumbnails.py`, which runs on a runner that has internet
   (e.g. the `backfill-thumbnails` GitHub Action) and enriches the live feed
-  after you push it. See the README → Thumbnails and `docs/s3-access.md` →
+  after you push it — **Step 7 dispatches that Action for you** at the end of
+  the run. See the README → Thumbnails and `docs/s3-access.md` →
   Network egress. If a research agent already put an `image` on an item, this
   step leaves it as-is, so you can supply one directly when you happen to have it.
 
@@ -115,6 +117,32 @@ wake if it's ever missing or stale.
 - If incremental mode added nothing, skip the push and exit cleanly. (The build
   script prints a "feed unchanged" line and leaves the files untouched in that
   case.)
+
+## Step 7 — Trigger the thumbnail backfill (only if you pushed)
+
+Your sandbox can't scrape thumbnails itself (egress is blocked — see Step 4.5),
+so the freshly pushed items land in S3 without images. Fix that promptly by
+kicking off the `backfill-thumbnails` GitHub Action, which runs on a GitHub
+runner that *does* have open internet. **This is the step that replaces you (or
+Nick) manually clicking "Run workflow."**
+
+- **Only when Step 6 actually pushed.** A daily rebuild (a whole fresh window)
+  and an incremental run that added items both leave new thumbnail-less items,
+  so trigger it after either. If Step 6 pushed nothing (a quiet incremental
+  with no additions), **skip this too** — there's nothing new to enrich.
+- **How:** dispatch the workflow with the GitHub Actions tool —
+  `actions_run_trigger` with `method: "run_workflow"`, `owner: "nairdrie"`,
+  `repo: "claude-rss"`, `workflow_id: "backfill-thumbnails.yml"`, `ref: "main"`.
+  (Human/CLI equivalent, for reference: `gh workflow run
+  backfill-thumbnails.yml --ref main`.) The workflow already allows
+  `workflow_dispatch`, so no inputs are needed.
+- **Fire-and-forget — never let this fail the run.** You don't wait for the
+  workflow to finish or check its result; dispatching it is the whole job. If
+  the GitHub Actions tool isn't available in the session or the dispatch
+  errors, just note it and exit cleanly. The workflow also runs on its own
+  hourly schedule as a backstop, so a missed dispatch only delays thumbnails —
+  it never harms the feed. (Same spirit as Step 4.5: thumbnails are never a
+  reason to stop.)
 
 ## Non-negotiables
 

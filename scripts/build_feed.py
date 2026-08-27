@@ -179,11 +179,12 @@ def stagger_pubdates(items: list, anchor: datetime, gap: timedelta = STAGGER_GAP
 def stagger_incremental(new_items: list, existing: list, ceiling: datetime) -> None:
     """Time-stamp an incremental trickle strictly above the existing window.
 
-    New items must outrank everything already in the feed (they're the fresh
-    additions) while staying below the pinned item at `ceiling` (now). We space
-    them evenly in the open interval between the newest existing item and
-    `ceiling`, so no matter how close two builds land they never collide with,
-    or sink beneath, the live window. Mutates in place.
+    New items are the fresh additions, so they must outrank everything already
+    in the feed -- the pinned chess puzzle included, so each day's incrementals
+    visibly bury it. We space them evenly in the open interval between the
+    newest existing item's pubDate (the floor) and `ceiling` (now), so no
+    matter how close two builds land they never collide with, or sink beneath,
+    the live window. Mutates in place.
     """
     if not new_items:
         return
@@ -252,13 +253,22 @@ def entry_from_existing(e) -> dict:
         fb_name, fb_url = source_fields(url)
         src_name = src_name or fb_name
         src_url = src_url or fb_url
+    guid_val = e.get("id") or url
     return {
         "title": title,
         "url": url,
         "description": e.get("summary") or title,
         "pubdate": pub,
         "image": image,
-        "guid": e.get("id") or url,
+        "guid": guid_val,
+        # Round-trip isPermaLink structurally so a carried-through pinned item
+        # (the chess puzzle) keeps isPermaLink="false": a guid that differs from
+        # the link is a synthetic, date-keyed guid (the puzzle's `url#YYYY-MM-DD`)
+        # and is NOT a permalink; a guid equal to the link is. feedparser's own
+        # `guidislink` can't be used here -- it forces False whenever an item has
+        # a <link> (always, in this feed), which would wrongly flip every
+        # carried-through item to isPermaLink="false".
+        "guid_is_permalink": guid_val == url,
         "source_name": src_name,
         "source_url": src_url,
     }
@@ -342,9 +352,9 @@ def main() -> None:
     seen = C.read_seen()
     seen_url_set = C.seen_urls(seen)
     today = C.today_str()
-    pinned = build_pinned(interests, today)
 
     if mode == "daily":
+        pinned = build_pinned(interests, today)
         if not curated:
             print("ERROR: daily build has no curated items; refusing to overwrite the "
                   "live feed with an empty one.", file=sys.stderr)
@@ -363,7 +373,6 @@ def main() -> None:
     else:  # incremental
         existing = read_existing_window()
         existing_urls = {it["url"] for it in existing}
-        existing_guids = {it.get("guid") for it in existing}
         fresh_raw = [
             r for r in curated
             if (r.get("url") or "").strip() not in existing_urls
@@ -373,21 +382,20 @@ def main() -> None:
         fresh_raw.sort(key=lambda r: 0 if r.get("breaking") else 1)
         fresh_raw = fresh_raw[:max_incremental]  # safety cap on top of the agent's own
         new_items = [entry_from_curated(r) for r in fresh_raw]
-        # Stamp the trickle above the existing window (breaking-first order
-        # preserved) so it sits on top and never inherits a midnight tie. The
-        # floor ignores pinned items -- they live at ~now and get re-pinned to
-        # the top regardless, so counting them would leave zero room.
-        pinned_urls = {p["url"] for p in pinned}
-        floor_items = [it for it in existing if it["url"] not in pinned_urls]
-        stagger_incremental(new_items, floor_items, C.now_local())
-        # A pinned item whose guid isn't in the live feed is missing or stale
-        # (e.g. still showing yesterday's puzzle) -- rebuild even with zero
-        # new researched items so it self-heals instead of waiting on content.
-        pinned_needs_refresh = any(p["guid"] not in existing_guids for p in pinned)
-        if not new_items and not pinned_needs_refresh:
+        if not new_items:
             print("No new items cleared the bar — feed unchanged, nothing to push.")
             return
-        window = pin_to_top(new_items + existing, pinned, window_size)
+        # Stamp the trickle above the ENTIRE existing window (breaking-first
+        # order preserved) so fresh items sit on top and never inherit a
+        # midnight tie -- including above the pinned chess puzzle. Incremental
+        # deliberately does NOT re-pin the puzzle: it keeps the pubDate the
+        # morning's daily build gave it and sinks down the feed as the day's
+        # additions land above it (build_pinned/pin_to_top run in daily mode
+        # only). The existing window is carried through as-is, so the puzzle's
+        # date-keyed guid rides along; the next daily rebuild puts a fresh
+        # puzzle back on top.
+        stagger_incremental(new_items, existing, C.now_local())
+        window = (new_items + existing)[:window_size]
         new_urls = [it["url"] for it in new_items]
 
     try:

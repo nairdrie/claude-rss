@@ -13,8 +13,11 @@ name: Backfill feed thumbnails
 
 on:
   schedule:
-    - cron: "0 * * * *" # hourly (UTC); keeps thumbnails filled as the feed changes
-  workflow_dispatch: {} # plus a manual "Run workflow" button
+    - cron: "0 * * * *" # hourly (UTC); backstop that keeps thumbnails filled
+  workflow_dispatch: {} # dispatched by the curator routine at the end of each
+                        # wake that pushed a changed feed (see CLAUDE.md Step 7),
+                        # so new items get thumbnails promptly instead of waiting
+                        # for the next hourly run -- plus a manual "Run workflow" button
 
 # Never let two backfills (or a manual + scheduled run) write the feed at once.
 concurrency:

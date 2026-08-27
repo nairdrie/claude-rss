@@ -134,6 +134,13 @@ There are two ways to actually get thumbnails; pick one:
    incremental builds; a daily rebuild starts a fresh window, so the hourly run
    refills it.
 
+   On top of that schedule, the curator routine **dispatches this workflow
+   itself** (`workflow_dispatch`) at the end of any wake that pushed a changed
+   feed — see [`CLAUDE.md`](CLAUDE.md) → Step 7 — so freshly curated items get
+   thumbnails within a minute or two instead of waiting up to an hour for the
+   next scheduled run. The hourly cron stays as a backstop. This is what
+   removes the need to click **Run workflow** by hand.
+
 2. **Open the routine's egress instead.** If you'd rather keep it in the
    routine, broaden the feed environment's network policy so
    `fetch_thumbnails.py` can reach article domains — no separate job needed. See
