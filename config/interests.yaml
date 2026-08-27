@@ -5,6 +5,9 @@ feed:
   window_size: 50          # max items in the live feed
   daily_target: 50         # items to assemble in the morning full build
   max_incremental_adds: 5  # cap per non-daily run
+  max_item_age_hours: 24   # hard cutoff: build_feed.py drops any candidate
+                           # older than this regardless of mode, as a backstop
+                           # on top of the research-time freshness guidance
 
 topics:
   - name: privacy/degoogle
@@ -31,6 +34,16 @@ topics:
   - name: roblox-dev
     detail: Roblox Studio game development, Roblox + AI tooling integrations
     weight: low
+
+pinned:
+  # Always injected at the very top of the feed by build_feed.py, in both
+  # daily and incremental modes -- not sourced from research, not subject to
+  # the freshness cutoff or seen.json dedup (same URL every day by design).
+  # Re-asserted on every build, so it self-heals if a run ever drops it.
+  - title: "Daily Chess Puzzle"
+    url: "https://www.chess.com/daily"
+    source: "Chess.com"
+    reason: "Today's daily puzzle."
 
 founder_context:
   detail: >

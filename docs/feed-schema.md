@@ -32,18 +32,38 @@ A channel with **no items is still valid** — that's exactly what
   <guid isPermaLink="true">https://www.anthropic.com/news/mcp-registry</guid>
   <pubDate>Tue, 26 Aug 2026 13:20:00 -0400</pubDate>
   <description>First-party MCP server discovery — relevant to the Claude-orchestrated pipeline. — Source: Anthropic</description>
+  <media:thumbnail url="https://www.anthropic.com/images/mcp-registry-og.png"/>
+  <enclosure url="https://www.anthropic.com/images/mcp-registry-og.png" type="image/png" length="0"/>
 </item>
 ```
 
 ### Field rules
 
-| Element         | Rule                                                                                   |
-| --------------- | -------------------------------------------------------------------------------------- |
-| `<guid>`        | **The article URL.** This is the dedup key — it must match the `url` recorded in `seen.json`. Emitted with `isPermaLink="true"`. |
-| `<link>`        | The article URL (same value as the guid).                                              |
-| `<pubDate>`     | **RFC 822**, timezone-aware (e.g. `Tue, 26 Aug 2026 13:20:00 -0400`). Parsed from the curated item's `published_at`, which may be ISO 8601 or RFC 822 on input. |
-| `<title>`       | The headline. **Breaking items are prefixed with `[BREAKING] `** (see below).          |
-| `<description>` | The one-line curation `reason`, with `— Source: <source>` appended when a source is given. |
+| Element              | Rule                                                                                   |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| `<guid>`              | **The article URL.** This is the dedup key — it must match the `url` recorded in `seen.json`. Emitted with `isPermaLink="true"`. |
+| `<link>`              | The article URL (same value as the guid).                                              |
+| `<pubDate>`           | **RFC 822**, timezone-aware (e.g. `Tue, 26 Aug 2026 13:20:00 -0400`). Parsed from the curated item's `published_at`, which may be ISO 8601 or RFC 822 on input. |
+| `<title>`             | The headline. **Breaking items are prefixed with `[BREAKING] `** (see below).          |
+| `<description>`       | The one-line curation `reason`, with `— Source: <source>` appended when a source is given. |
+| `<media:thumbnail>`   | **Optional.** Emitted only when the item has an `image`. This is what most readers (Feedly, Inoreader, NetNewsWire) look for. |
+| `<enclosure>`         | **Optional**, alongside `media:thumbnail` — a fallback for readers that only check enclosures. `type` is guessed from the image URL's extension (defaults to `image/jpeg`); `length` is always `0` since the real byte size isn't known at scrape time. |
+
+## Pinned items
+
+`interests.yaml`'s `pinned` list (currently just the daily chess puzzle) is
+always injected at the very top of the feed by `build_feed.py`, in both
+daily and incremental builds — it's never sourced from research, never
+subject to the freshness cutoff, and never deduped against `seen.json`. A
+pinned item's `url` is expected to stay the same day to day while its real
+content changes server-side (e.g. `chess.com/daily` always shows *today's*
+puzzle) — build_feed.py works around this by giving each day's instance a
+distinct `<guid isPermaLink="false">url#YYYY-MM-DD</guid>`, so readers treat
+each day's puzzle as a new item even though the `<link>` itself never
+changes. Every build re-evicts any existing item with the pinned url and
+re-inserts the freshly-built one, so a stale or missing pinned item
+self-heals on the very next run (daily or incremental) rather than waiting
+for tomorrow's rebuild.
 
 ## `[BREAKING]` convention
 
@@ -74,12 +94,17 @@ writes. Each item:
   "source": "Anthropic",
   "published_at": "2026-08-26T13:20:00-04:00",
   "reason": "First-party MCP server discovery — relevant to the pipeline.",
-  "breaking": false
+  "breaking": false,
+  "image": "https://www.anthropic.com/images/mcp-registry-og.png"
 }
 ```
 
 `url` is required (items without one are skipped). `published_at` accepts ISO
-8601 or RFC 822; anything unparseable falls back to the current time.
+8601 or RFC 822; anything unparseable falls back to the current time. `image`
+is optional and usually absent at this stage — `scripts/fetch_thumbnails.py`
+fills it in afterward by scraping each item's `og:image` (see Step 4.5 in
+`CLAUDE.md`). An item that already has an `image` (e.g. a research agent
+found one directly) is left untouched by that step.
 
 ## `seen.json` (state)
 

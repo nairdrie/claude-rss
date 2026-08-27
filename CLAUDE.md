@@ -29,8 +29,17 @@ and stop.
 ## Step 2 — Research (use your web search tools)
 
 - **DAILY mode:** search across every topic in `interests.yaml`, allocating
-  effort by `weight` (more queries/results for `high`, fewer for `low`). Gather
-  15–25 genuinely new candidate items from roughly the last 36 hours.
+  effort by `weight` (more queries/results for `high`, fewer for `low`). Aim
+  for up to `daily_target` (see `interests.yaml` — currently 50) genuinely new
+  candidate items **published within the last 24 hours** (today or yesterday
+  in America/Toronto) — search each topic thoroughly enough to plausibly
+  reach that count on a busy news day, especially the `high`-weight ones.
+  A quieter day legitimately producing fewer is correct, not a failure —
+  never reach for an older item just because it's the most recent available
+  (e.g. a weekly recurring roundup) to pad the count. `build_feed.py` also
+  hard-drops anything older than `max_item_age_hours` (`config/interests.yaml`)
+  as a backstop, so treat the 24-hour window as the real target, not a rough
+  guideline.
 - **INCREMENTAL mode:** search only `high`-weight topics plus a quick scan for
   anything breaking across the others. Be conservative — you are trickling in
   updates through the day, not refilling the feed.
@@ -54,6 +63,19 @@ and stop.
 
 Write `state/curated.json` as a JSON array; each item:
 `{ "title", "url", "source", "published_at" (ISO 8601 or RFC 822), "reason" (one line), "breaking" (bool) }`
+
+You never need to curate the daily chess puzzle yourself — `build_feed.py`
+always injects it at the top of the feed from `interests.yaml`'s `pinned`
+list, in both daily and incremental builds, so it self-heals on the next
+wake if it's ever missing or stale.
+
+## Step 4.5 — Thumbnails
+
+- Run `python scripts/fetch_thumbnails.py`. It scrapes each curated item's
+  `og:image` (best-effort, stdlib-only) and adds an `"image"` field to
+  `curated.json` where found.
+- This is never a reason to stop the run — a missing thumbnail just means
+  that item renders without one. Don't chase failures here.
 
 ## Step 5 — Build
 

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 try:
     from scripts import _common as C
@@ -55,6 +55,27 @@ def dedup_raw(items: list) -> list:
     return out
 
 
+def filter_fresh(items: list, max_age_hours) -> list:
+    """Hard backstop on freshness: drop candidates older than max_age_hours.
+
+    This exists because "roughly N hours" in the research prompt is guidance,
+    not a guarantee -- an agent can still reach for the most recent edition of
+    a weekly/monthly series and call it fresh. Unset/falsy max_age_hours means
+    no cutoff (back-compat for configs that don't set it). Unparseable dates
+    fall back to "now" in parse_date(), so they're never wrongly dropped here.
+    """
+    if not max_age_hours:
+        return items
+    cutoff = C.now_local() - timedelta(hours=float(max_age_hours))
+    fresh, stale = [], []
+    for it in items:
+        (fresh if C.parse_date(it.get("published_at")) >= cutoff else stale).append(it)
+    if stale:
+        dropped = ", ".join((it.get("url") or "(no url)") for it in stale)
+        print(f"Dropping {len(stale)} candidate(s) older than {max_age_hours}h: {dropped}")
+    return fresh
+
+
 def entry_from_curated(raw: dict) -> dict:
     title = (raw.get("title") or "(untitled)").strip()
     if raw.get("breaking"):
@@ -70,6 +91,7 @@ def entry_from_curated(raw: dict) -> dict:
         "url": (raw.get("url") or "").strip(),
         "description": description or title,
         "pubdate": C.parse_date(raw.get("published_at")),
+        "image": (raw.get("image") or "").strip() or None,
     }
 
 
@@ -80,11 +102,22 @@ def entry_from_existing(e) -> dict:
     else:
         pub = C.parse_date(e.get("published"))
     title = e.get("title") or "(untitled)"
+    image = None
+    thumbs = e.get("media_thumbnail") or []
+    if thumbs:
+        image = thumbs[0].get("url")
+    if not image:
+        for enc in e.get("enclosures") or []:
+            if str(enc.get("type", "")).startswith("image/"):
+                image = enc.get("href") or enc.get("url")
+                break
     return {
         "title": title,
         "url": url,
         "description": e.get("summary") or title,
         "pubdate": pub,
+        "image": image,
+        "guid": e.get("id") or url,
     }
 
 
@@ -99,6 +132,54 @@ def read_existing_window() -> list:
     return [entry_from_existing(e) for e in parsed.entries if (e.get("link") or e.get("id"))]
 
 
+def build_pinned(interests: dict, today: str) -> list:
+    """Build always-on-top items from interests.yaml's `pinned` list.
+
+    Unlike curated items, these never go through research, the freshness
+    cutoff, or seen.json dedup -- their url is expected to be stable day to
+    day (e.g. chess.com's daily puzzle page) while the underlying content
+    changes daily. Each gets a guid keyed to today's date and isPermaLink
+    false, so readers treat each day's instance as a new item even though
+    the link itself never changes.
+    """
+    pinned_cfg = (interests or {}).get("pinned") or []
+    if isinstance(pinned_cfg, dict):
+        pinned_cfg = [pinned_cfg]
+    out = []
+    for p in pinned_cfg:
+        if not isinstance(p, dict):
+            continue
+        url = (p.get("url") or "").strip()
+        if not url:
+            continue
+        title = (p.get("title") or "(untitled)").strip()
+        reason = (p.get("reason") or "").strip()
+        source = (p.get("source") or "").strip()
+        if reason and source:
+            description = f"{reason} — Source: {source}"
+        else:
+            description = reason or (f"Source: {source}" if source else title)
+        out.append({
+            "title": f"{title} — {today}",
+            "url": url,
+            "description": description,
+            "pubdate": C.now_local(),
+            "image": (p.get("image") or "").strip() or None,
+            "guid": f"{url}#{today}",
+            "guid_is_permalink": False,
+        })
+    return out
+
+
+def pin_to_top(items: list, pinned: list, window_size: int) -> list:
+    """Prepend pinned items, evicting any stale copy of them by url, then trim."""
+    if not pinned:
+        return items[:window_size]
+    pinned_urls = {p["url"] for p in pinned}
+    rest = [it for it in items if it["url"] not in pinned_urls]
+    return (pinned + rest)[:window_size]
+
+
 def main() -> None:
     if len(sys.argv) != 2 or sys.argv[1] not in ("daily", "incremental"):
         print("Usage: python scripts/build_feed.py <daily|incremental>", file=sys.stderr)
@@ -111,10 +192,11 @@ def main() -> None:
     daily_target = int(feed_cfg.get("daily_target", window_size) or window_size)
     max_incremental = int(feed_cfg.get("max_incremental_adds", 5) or 5)
 
-    curated = dedup_raw(load_curated())
+    curated = filter_fresh(dedup_raw(load_curated()), feed_cfg.get("max_item_age_hours"))
     seen = C.read_seen()
     seen_url_set = C.seen_urls(seen)
     today = C.today_str()
+    pinned = build_pinned(interests, today)
 
     if mode == "daily":
         if not curated:
@@ -123,11 +205,13 @@ def main() -> None:
             sys.exit(1)
         items = [entry_from_curated(r) for r in curated]
         items.sort(key=lambda it: it["pubdate"], reverse=True)  # newest first
-        window = items[: min(daily_target, window_size)]
-        new_urls = [it["url"] for it in window]
+        selected = items[: min(daily_target, window_size)]
+        window = pin_to_top(selected, pinned, window_size)
+        new_urls = [it["url"] for it in selected]
     else:  # incremental
         existing = read_existing_window()
         existing_urls = {it["url"] for it in existing}
+        existing_guids = {it.get("guid") for it in existing}
         fresh_raw = [
             r for r in curated
             if (r.get("url") or "").strip() not in existing_urls
@@ -137,10 +221,14 @@ def main() -> None:
         fresh_raw.sort(key=lambda r: 0 if r.get("breaking") else 1)
         fresh_raw = fresh_raw[:max_incremental]  # safety cap on top of the agent's own
         new_items = [entry_from_curated(r) for r in fresh_raw]
-        if not new_items:
+        # A pinned item whose guid isn't in the live feed is missing or stale
+        # (e.g. still showing yesterday's puzzle) -- rebuild even with zero
+        # new researched items so it self-heals instead of waiting on content.
+        pinned_needs_refresh = any(p["guid"] not in existing_guids for p in pinned)
+        if not new_items and not pinned_needs_refresh:
             print("No new items cleared the bar — feed unchanged, nothing to push.")
             return
-        window = (new_items + existing)[:window_size]
+        window = pin_to_top(new_items + existing, pinned, window_size)
         new_urls = [it["url"] for it in new_items]
 
     try:
