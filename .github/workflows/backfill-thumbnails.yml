@@ -1,0 +1,43 @@
+name: Backfill feed thumbnails
+
+# The Claude curator routine runs in a sandbox with no outbound access to
+# article domains, so it can't scrape og:image thumbnails. GitHub's runners DO
+# have open internet, so we do the scraping here: pull the live feed from S3,
+# add a <media:thumbnail> to every item missing one, and write it back.
+#
+# Setup (one time): add three repo secrets under
+# Settings -> Secrets and variables -> Actions:
+#   AWS_ACCESS_KEY_ID      - an IAM user scoped to get/put the two feed objects
+#   AWS_SECRET_ACCESS_KEY    (see docs/s3-access.md -> Minimum IAM permissions)
+#   AWS_REGION             - us-east-1  (optional; defaults to us-east-1)
+
+on:
+  schedule:
+    - cron: "0 * * * *" # hourly (UTC); keeps thumbnails filled as the feed changes
+  workflow_dispatch: {} # plus a manual "Run workflow" button
+
+# Never let two backfills (or a manual + scheduled run) write the feed at once.
+concurrency:
+  group: backfill-thumbnails
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Backfill thumbnails into the live feed
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        run: python scripts/backfill_thumbnails.py

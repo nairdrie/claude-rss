@@ -89,13 +89,15 @@ wake if it's ever missing or stale.
   `curated.json` where found.
 - This is never a reason to stop the run — a missing thumbnail just means
   that item renders without one. Don't chase failures here.
-- Scraping needs outbound network access to each article's domain. If the run
-  environment's egress policy blocks that, the step prints an `egress-blocked`
-  summary and the feed is simply text-only — that's expected, not an error to
-  fix from this session. Enabling thumbnails is an environment-config change
-  (see `docs/s3-access.md` → Network egress). If a research agent already put an
-  `image` on an item, this step leaves it as-is, so you can supply one directly
-  when you happen to have it.
+- Scraping needs outbound network access to each article's domain. This
+  routine's sandbox usually blocks that, so the step prints an `egress-blocked`
+  summary and moves on — that's expected, not an error to fix from this session.
+  Thumbnails are normally filled in **out-of-band** by
+  `scripts/backfill_thumbnails.py`, which runs on a runner that has internet
+  (e.g. the `backfill-thumbnails` GitHub Action) and enriches the live feed
+  after you push it. See the README → Thumbnails and `docs/s3-access.md` →
+  Network egress. If a research agent already put an `image` on an item, this
+  step leaves it as-is, so you can supply one directly when you happen to have it.
 
 ## Step 5 — Build
 

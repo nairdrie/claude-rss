@@ -139,8 +139,18 @@ Thumbnails: 0 scraped, … 48 fetch failures (of 48 attempted) …
   blocking these domains …
 ```
 
-To enable thumbnails, broaden the **feed environment's network access** so
-outbound HTTPS to article domains is allowed:
+There are two ways to get thumbnails anyway:
+
+**1. Scrape from a runner that has internet (recommended).** Run
+`scripts/backfill_thumbnails.py` *outside* the routine's sandbox — on GitHub's
+runners (see `.github/workflows/backfill-thumbnails.yml`), your laptop, or any
+cron box. It pulls the live feed from S3, adds a `<media:thumbnail>` to every
+item missing one, and writes it back (conditional-write, so it never clobbers a
+concurrent routine build). This keeps the routine's environment locked down and
+decouples thumbnail scraping from it entirely. See the README → Thumbnails.
+
+**2. Broaden the routine environment's network access** so the in-routine
+`fetch_thumbnails.py` can reach article domains directly:
 
 - On Claude Code on the web, pick a more permissive network policy when
   creating/editing the environment the routine runs in (see
