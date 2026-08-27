@@ -35,10 +35,11 @@ topics:
     details: tech products, good deals, tech announcements, smart phones, apple, PCs, android
 
 pinned:
-  # Always injected at the very top of the feed by build_feed.py, in both
-  # daily and incremental modes -- not sourced from research, not subject to
-  # the freshness cutoff or seen.json dedup (same URL every day by design).
-  # Re-asserted on every build, so it self-heals if a run ever drops it.
+  # Injected by build_feed.py -- not sourced from research, not subject to the
+  # freshness cutoff or seen.json dedup (same URL every day by design). The
+  # DAILY build pins it to the top of the fresh window; INCREMENTAL builds
+  # leave it in place so the day's additions bury it. Each morning's daily
+  # rebuild puts that day's puzzle back on top.
   - title: "Daily Chess Puzzle"
     url: "https://www.chess.com/daily"
     source: "Chess.com"

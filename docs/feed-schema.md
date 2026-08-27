@@ -56,18 +56,24 @@ A channel with **no items is still valid** — that's exactly what
 ## Pinned items
 
 `interests.yaml`'s `pinned` list (currently just the daily chess puzzle) is
-always injected at the very top of the feed by `build_feed.py`, in both
-daily and incremental builds — it's never sourced from research, never
-subject to the freshness cutoff, and never deduped against `seen.json`. A
-pinned item's `url` is expected to stay the same day to day while its real
-content changes server-side (e.g. `chess.com/daily` always shows *today's*
-puzzle) — build_feed.py works around this by giving each day's instance a
-distinct `<guid isPermaLink="false">url#YYYY-MM-DD</guid>`, so readers treat
-each day's puzzle as a new item even though the `<link>` itself never
-changes. Every build re-evicts any existing item with the pinned url and
-re-inserts the freshly-built one, so a stale or missing pinned item
-self-heals on the very next run (daily or incremental) rather than waiting
-for tomorrow's rebuild.
+injected by `build_feed.py` — never sourced from research, never subject to
+the freshness cutoff, and never deduped against `seen.json`. A pinned item's
+`url` is expected to stay the same day to day while its real content changes
+server-side (e.g. `chess.com/daily` always shows *today's* puzzle) —
+build_feed.py works around this by giving each day's instance a distinct
+`<guid isPermaLink="false">url#YYYY-MM-DD</guid>`, so readers treat each
+day's puzzle as a new item even though the `<link>` itself never changes.
+
+**The daily build pins it to the very top** of the freshly rebuilt window.
+**Incremental builds do not re-pin it** — they carry the existing window
+through as-is and stamp the new trickle *above* it, so the pinned puzzle keeps
+the pubDate the morning gave it and sinks down the feed as the day's additions
+land on top. The next morning's daily rebuild introduces that day's puzzle
+back at the top. (Earlier every build re-pinned it, gluing it to position 1;
+it now behaves like a normal top-of-morning item that ages down through the
+day. A consequence: on a very busy day it can eventually be trimmed out of the
+`window_size` tail before the next daily — that's the burial working as
+intended, and the morning rebuild restores it.)
 
 ## `[BREAKING]` convention
 
@@ -88,7 +94,8 @@ software release is not breaking.
   real `published_at` time still sort newest-first before the stagger is laid
   down. In incremental mode new items are stamped just above the existing
   window (breaking first) and the tail is trimmed back to `window_size`. The
-  pinned item always sits on top at "now".
+  pinned puzzle is part of that existing window — it's placed on top only by
+  the daily build, then sinks as later incrementals stamp above it.
 - Items that age out of the window **disappear from `feed.xml`** but their URLs
   **remain in `seen.json`** so they're never re-added. `seen.json` entries are
   pruned after ~30 days, at which point a still-relevant story could resurface.
