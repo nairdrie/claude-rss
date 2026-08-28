@@ -1,0 +1,48 @@
+# ---------------------------------------------------------------------------
+# Portfolio holdings for the Morning Line dashboard.
+#
+# This is the single source of truth for "what Nick owns". The daily job
+# (scripts/fetch_portfolio.py) reads it, looks up a live quote for each symbol,
+# normalizes everything to base_currency, and writes a summary + appends a
+# daily snapshot to the history store. EDIT THIS when you buy/sell.
+#
+# `symbol`   : the Yahoo Finance symbol. Canadian listings need a suffix:
+#              TSX -> ".TO", Cboe Canada (old NEO exchange) -> ".NE".
+#              US listings have no suffix.
+# `shares`   : share count (fractional ok).
+# `currency` : the currency the position trades in (drives FX conversion).
+# `ref_price`: value/shares from the 2026-08-28 Wealthsimple screenshots.
+#              Used ONLY as a sanity check — if the live quote is wildly off,
+#              the symbol is probably wrong and the job logs a warning.
+# `unverified`: set when the ticker->symbol mapping is a guess (see NOTES).
+# ---------------------------------------------------------------------------
+base_currency: CAD
+
+holdings:
+  - { symbol: BA,      shares: 4,        currency: USD, name: "Boeing",                 ref_price: 209.61 }
+  - { symbol: CM.TO,   shares: 15.2914,  currency: CAD, name: "CIBC",                   ref_price: 159.09 }
+  - { symbol: DIS,     shares: 4.062,    currency: USD, name: "Disney",                 ref_price: 108.09 }
+  - { symbol: ENB.TO,  shares: 18.4742,  currency: CAD, name: "Enbridge",               ref_price: 69.76 }
+  - { symbol: ETC,     shares: 3.3244,   currency: CAD, name: "ETC (unconfirmed)",      ref_price: 14.93, unverified: true }
+  - { symbol: GOOGL,   shares: 3.0099,   currency: USD, name: "Alphabet",               ref_price: 345.96 }
+  - { symbol: HDIV.TO, shares: 67.6534,  currency: CAD, name: "Hamilton Enhanced Multi-Sector Covered Call", ref_price: 24.04 }
+  - { symbol: HXQ.TO,  shares: 16,       currency: CAD, name: "Global X Nasdaq-100 Index", ref_price: 117.78 }
+  - { symbol: NEO.TO,  shares: 4.0421,   currency: CAD, name: "Neo Performance Materials (unconfirmed)", ref_price: 32.45, unverified: true }
+  - { symbol: QQQ,     shares: 3.0182,   currency: USD, name: "Invesco QQQ",            ref_price: 716.20 }
+  - { symbol: TCMD,    shares: 13,       currency: USD, name: "Tactile Systems",        ref_price: 23.16 }
+  - { symbol: VFV.TO,  shares: 116.5689, currency: CAD, name: "Vanguard S&P 500 Index", ref_price: 190.38 }
+  - { symbol: XEQT.TO, shares: 12.3161,  currency: CAD, name: "iShares All-Equity",     ref_price: 45.92 }
+  - { symbol: ZDV.TO,  shares: 47.3679,  currency: CAD, name: "BMO Canadian Dividend",  ref_price: 33.32 }
+
+# FX symbol used to convert USD positions -> CAD (Yahoo: "CAD=X" == USD/CAD).
+fx_symbol: "CAD=X"
+
+# NOTES / things to confirm:
+#   - ETC  : couldn't identify this from the logo/price ($14.93 CAD, ~flat).
+#            Tell me what it is and I'll set the right symbol.
+#   - NEO  : assumed Neo Performance Materials (NEO.TO). The ticker "NEO" is
+#            easy to confuse with the NEO/Cboe *exchange* — confirm it's the
+#            stock. Price ~$32 CAD fits Neo Performance.
+#   - HXQ/HDIV: Global X & Hamilton total-return/covered-call ETFs. Verified
+#            HDIV.TO resolves on Yahoo; HXQ.TO assumed (same family). The job's
+#            price sanity-check will flag either if the suffix is wrong.
