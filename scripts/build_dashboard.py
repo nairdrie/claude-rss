@@ -186,13 +186,15 @@ def fetch_jays(conf: dict) -> dict:
                     break
         if rec:
             wc_rank = rec.get("wildCardRank") or rec.get("leagueRank") or ""
-            gb = rec.get("wildCardGamesBack") or rec.get("gamesBack") or "-"
+            gb = str(rec.get("wildCardGamesBack") or rec.get("gamesBack") or "-").strip()
+            holds = gb in ("-", "0", "0.0")
             badge = f"{_ordinal(int(wc_rank))} Wild Card" if str(wc_rank).isdigit() else "AL East"
-            gb_str = ("+" + gb) if gb not in ("-", "0", "0.0") and not str(gb).startswith("+") else gb
             jays["standing"] = {
-                "badge": badge, "gb": gb_str if gb != "-" else "",
+                "sbadge": badge,
+                "gb": "" if holds else f"{gb} GB",       # behind reads "3.5 GB", not "+3.5"
                 "record": f"{rec.get('wins',0)}-{rec.get('losses',0)}",
                 "note": _standing_note(rec),
+                "gb_num": 0.0 if holds else _as_float(gb),
             }
     except H.EgressBlocked:
         raise
@@ -200,12 +202,19 @@ def fetch_jays(conf: dict) -> dict:
         print(f"  jays standings failed: {exc}", file=sys.stderr)
 
     if jays["standing"] is None:
-        jays["standing"] = {"badge": "Blue Jays", "gb": "", "record": "", "note": ""}
+        jays["standing"] = {"sbadge": "Blue Jays", "gb": "", "record": "", "note": "", "gb_num": 99}
     return jays
 
 
 def _ordinal(n: int) -> str:
     return f"{n}{'th' if 11 <= n % 100 <= 13 else {1:'st',2:'nd',3:'rd'}.get(n % 10,'th')}"
+
+
+def _as_float(s) -> float:
+    try:
+        return float(s)
+    except (TypeError, ValueError):
+        return 99.0
 
 
 def _standing_note(rec: dict) -> str:
@@ -319,18 +328,22 @@ def fetch_pogo(conf: dict) -> list:
 def portfolio_block(pj: dict | None) -> dict | None:
     if not pj:
         return None
-    as_of = pj.get("as_of", "")
-    tstr = ""
-    dt = parse_iso(as_of)
-    if dt:
-        tstr = dt.astimezone(C.tz()).strftime("%-I:%M %p")
+    dt = parse_iso(pj.get("as_of", ""))
+    tstr = dt.astimezone(C.tz()).strftime("%-I:%M %p") if dt else ""
+    # Per-holding detail is included so the dashboard's Portfolio card can expand
+    # to show each position (Nick opted to keep holdings public).
+    holdings = [{
+        "tkr": h.get("symbol", ""), "co": h.get("name", ""),
+        "shares": h.get("shares", 0), "price": h.get("price", 0),
+        "dayPct": h.get("day_pct", 0), "value": h.get("value_cad", 0),
+    } for h in pj.get("holdings", [])]
     return {
         "total": pj.get("total", 0),
         "dayChange": pj.get("day_change", 0),
         "dayPct": pj.get("day_pct", 0),
         "week": pj.get("week_series") or [pj.get("total", 0), pj.get("total", 0)],
         "note": f"Updated {tstr}" if tstr else "Updated this morning",
-        # holdings intentionally omitted — never published (privacy)
+        "holdings": holdings,
     }
 
 
@@ -352,8 +365,12 @@ def greeting_sub(fantasy, jays, markets) -> str:
     if n:
         bits.append(f"{n} roster alert{'s' if n != 1 else ''}")
     stand = jays.get("standing") or {}
-    if "Wild Card" in (stand.get("badge") or ""):
-        bits.append("Jays in the wild-card race")
+    gbn = stand.get("gb_num", 99)
+    if "Wild Card" in (stand.get("sbadge") or ""):
+        if gbn <= 1.0 or "holding" in (stand.get("note") or "").lower():
+            bits.append("Jays hold a wild-card spot")
+        elif gbn <= 6:
+            bits.append(f"Jays {gbn:g} back of a WC spot")
     if markets:
         ups = sum(1 for m in markets if m["pct"] >= 0)
         bits.append("markets green" if ups == len(markets)
@@ -388,7 +405,7 @@ def cover_block(data) -> dict:
             "score": (last or {}).get("score", ""), "opp": (last or {}).get("opp", ""),
             "line1": (f"Next: <b>{html.escape((nxt or {}).get('when',''))} {html.escape((nxt or {}).get('time',''))}</b> {html.escape((nxt or {}).get('opp',''))}"
                       if nxt else ""),
-            "line2": (f"{html.escape(st.get('badge',''))}" + (f" · <span class='g'>{html.escape(st.get('gb',''))}</span>" if st.get("gb") else ""))}
+            "line2": (f"{html.escape(st.get('sbadge',''))}" + (f" · <span class='g'>{html.escape(st.get('gb',''))}</span>" if st.get("gb") else ""))}
     # portfolio
     if p:
         pcov = {"total": f"${p['total']:,.0f}",
@@ -443,7 +460,7 @@ def render_cover_png() -> bool:
         return False
     import tempfile
     cmd = [chrome, "--headless=new", "--no-sandbox", "--hide-scrollbars",
-           "--force-device-scale-factor=2", "--window-size=1200,630",
+           "--force-device-scale-factor=2", "--window-size=1080,1080",
            "--virtual-time-budget=3000", f"--user-data-dir={tempfile.mkdtemp()}",
            f"--screenshot={COVER_PNG}", COVER_OUT.as_uri()]
     try:
@@ -478,7 +495,8 @@ def main() -> None:
 
     markets = safe(lambda: fetch_markets(conf), [])
     jays = safe(lambda: fetch_jays(conf), {"last": None, "next": None,
-                "standing": {"badge": "Blue Jays", "gb": "", "record": "", "note": ""}, "news": None})
+                "standing": {"sbadge": "Blue Jays", "gb": "", "record": "", "note": "", "gb_num": 99},
+                "news": None})
     pogo = safe(lambda: fetch_pogo(conf), [])
     leafs = leafs_block(conf)
 

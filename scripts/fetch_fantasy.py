@@ -96,6 +96,29 @@ def projections(season: str, week: int) -> dict:
     return {}
 
 
+def nfl_opponents(week: int) -> dict:
+    """Best-effort {TEAM_ABBR: 'vs OPP' / '@ OPP'} for the regular-season week (ESPN)."""
+    try:
+        data = H.get_json("https://site.api.espn.com/apis/site/v2/sports/football/nfl/"
+                          f"scoreboard?week={week}&seasontype=2", timeout=15)
+    except Exception:
+        return {}
+    out = {}
+    for ev in data.get("events", []):
+        for comp in ev.get("competitions", []):
+            tm = comp.get("competitors", [])
+            if len(tm) != 2:
+                continue
+            a = (tm[0].get("team") or {}).get("abbreviation", "")
+            b = (tm[1].get("team") or {}).get("abbreviation", "")
+            if not a or not b:
+                continue
+            a_home = tm[0].get("homeAway") == "home"
+            out[a] = f"{'vs' if a_home else '@'} {b}"
+            out[b] = f"{'@' if a_home else 'vs'} {a}"
+    return out
+
+
 def player_view(pid: str, players: dict, proj: dict) -> dict:
     """Resolve one starter slot's player into a display row."""
     p = players.get(pid) or {}
@@ -117,7 +140,7 @@ def starting_slots(roster_positions: list) -> list:
     return [rp for rp in (roster_positions or []) if rp not in BENCH_SLOTS]
 
 
-def build_lineup(starters: list, slots: list, players: dict, proj: dict) -> list:
+def build_lineup(starters: list, slots: list, players: dict, proj: dict, opp_map: dict) -> list:
     out = []
     for i, pid in enumerate(starters or []):
         if not pid or pid == "0":
@@ -126,7 +149,7 @@ def build_lineup(starters: list, slots: list, players: dict, proj: dict) -> list
         pv = player_view(str(pid), players, proj)
         out.append({
             "pos": POS_LABEL.get(slot, slot or pv["pos"]),
-            "name": pv["name"], "team": pv["team"], "opp": "",
+            "name": pv["name"], "team": pv["team"], "opp": opp_map.get(pv["team"], ""),
             "proj": pv["proj"], "status": pv["status"], "note": pv["note"],
         })
     return out
@@ -207,7 +230,17 @@ def main() -> None:
     try:
         state = _get(f"{API}/state/nfl")
         season = str(cfg.get("season") or state.get("season") or "2026")
-        week = int(cfg.get("week") or state.get("week") or state.get("display_week") or 1) or 1
+        season_type = (state.get("season_type") or "regular").lower()
+        # During the preseason, state.week is the PRESEASON week (1-4) and
+        # season_type == "pre" — showing that as "Week 3" is wrong. Use
+        # display_week (the upcoming regular week, = 1 before kickoff) instead.
+        if cfg.get("week"):
+            week = int(cfg["week"])
+        elif season_type == "pre":
+            week = int(state.get("display_week") or 1) or 1
+        else:
+            week = int(state.get("week") or state.get("display_week") or 1) or 1
+        preseason = season_type == "pre"
 
         user = _get(f"{API}/user/{username}")
         user_id = str(user.get("user_id") or "")
@@ -234,6 +267,7 @@ def main() -> None:
 
         players = load_players(season)
         proj = projections(season, week)
+        opp_map = nfl_opponents(week)
         slots = starting_slots(league.get("roster_positions"))
 
         # Matchup: find opponent via shared matchup_id
@@ -256,7 +290,7 @@ def main() -> None:
         if not my_starters:
             my_starters = my_roster.get("starters") or []
 
-        lineup = build_lineup(my_starters, slots, players, proj)
+        lineup = build_lineup(my_starters, slots, players, proj, opp_map)
         my_proj = round(sum(s["proj"] for s in lineup if s["proj"]), 1) if proj else None
         opp_proj = None
         if proj and opp_starters:
@@ -271,7 +305,8 @@ def main() -> None:
             "league": league.get("name") or "League",
             "format": fmt,
             "week": week,
-            "meta": "live" if (my_pts or 0) > 0 else "preview",
+            "meta": (f"live · Week {week}" if (not preseason and (my_pts or 0) > 0)
+                     else f"Week {week} preview"),
             "you": {"name": team_name(users_by_id, my_roster), "record": record_str(my_roster),
                     "proj": my_proj, "winPct": my_wp},
             "opp": {"name": team_name(users_by_id, opp_roster) if opp_roster else "TBD",
