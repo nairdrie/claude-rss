@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Morning Line — cover</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+  /* Baked thumbnail — single (dark) theme by design; 1200×630 social/feed card. */
+  :root {
+    --bg:#0A0F18; --surface:#121A27; --surface-2:#172131;
+    --ink:#E9EEF5; --ink-2:#A7B2C2; --muted:#6C7788;
+    --line:#243248; --brand-ink:#0E1725;
+    --accent:#E5A23C; --up:#37C67E; --down:#EE6A55;
+    --f-deck:"Oswald","Arial Narrow","Roboto Condensed",system-ui,sans-serif;
+    --f-body:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { width:1200px; height:630px; overflow:hidden; }
+  body {
+    background:
+      radial-gradient(120% 140% at 0% 0%, rgba(229,162,60,.14), transparent 42%),
+      var(--bg);
+    color:var(--ink); font-family:var(--f-body);
+    padding:40px 46px 34px; display:flex; flex-direction:column;
+  }
+  .tnum { font-variant-numeric:tabular-nums; }
+
+  /* Masthead */
+  .top { display:flex; align-items:baseline; gap:16px; border-bottom:2px solid var(--accent); padding-bottom:12px; }
+  .wordmark { font-family:var(--f-deck); font-weight:700; text-transform:uppercase; letter-spacing:.14em;
+    font-size:30px; line-height:1; display:flex; align-items:baseline; gap:12px; }
+  .wordmark .the { color:var(--accent); font-weight:500; font-size:22px; letter-spacing:.2em; }
+  .dateline { margin-left:auto; text-align:right; font-family:var(--f-deck); text-transform:uppercase;
+    letter-spacing:.08em; color:var(--ink-2); font-size:16px; line-height:1.25; }
+  .dateline b { color:var(--ink); font-weight:600; font-size:18px; }
+
+  .sub { color:var(--muted); font-size:14px; margin:10px 0 12px;
+    font-family:var(--f-deck); text-transform:uppercase; letter-spacing:.14em; }
+
+  /* Tile grid */
+  .grid { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:16px;
+    height:426px; overflow:hidden; }
+  .tile { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px 20px;
+    display:flex; flex-direction:column; justify-content:center; gap:10px; overflow:hidden; }
+  .tile .eyebrow { font-family:var(--f-deck); text-transform:uppercase; letter-spacing:.12em; font-weight:600;
+    font-size:14px; color:var(--accent); display:flex; align-items:center; gap:8px; }
+  .tile .eyebrow .meta { margin-left:auto; color:var(--muted); font-size:12px; letter-spacing:.06em; }
+  .tile .eyebrow::before { content:""; width:9px; height:9px; background:var(--accent); border-radius:2px;
+    transform:rotate(45deg); }
+
+  .fant-score { display:flex; align-items:baseline; gap:12px; font-family:var(--f-mono); }
+  .fant-score .me { font-size:39px; font-weight:700; color:var(--ink); }
+  .fant-score .vs { font-family:var(--f-deck); color:var(--muted); font-size:16px; letter-spacing:.1em; }
+  .fant-score .op { font-size:27px; font-weight:600; color:var(--ink-2); }
+  .fant-meta { color:var(--ink-2); font-size:14px; margin-top:6px; }
+  .fant-meta b { color:var(--accent); font-family:var(--f-mono); }
+  .teamname { color:var(--muted); font-size:13px; margin-top:9px; font-family:var(--f-mono); }
+
+  .jays-res { display:flex; align-items:baseline; gap:10px; }
+  .jays-res .w, .jays-res .l, .jays-res .otl { font-family:var(--f-deck); font-weight:700;
+    color:#fff; padding:2px 9px; border-radius:6px; font-size:19px; }
+  .jays-res .w { background:var(--up); }
+  .jays-res .l { background:var(--down); }
+  .jays-res .otl { background:var(--warn); }
+  .jays-res .sc { font-family:var(--f-mono); font-weight:700; font-size:26px; }
+  .jays-res .op { color:var(--muted); font-size:15px; }
+  .line { color:var(--ink-2); font-size:14.5px; margin-top:7px; }
+  .line .g { color:var(--accent); font-weight:600; font-family:var(--f-mono); }
+
+  .port-val { font-family:var(--f-mono); font-weight:700; font-size:40px; letter-spacing:-.01em;
+    color:var(--ink); }
+  .port-day { color:var(--up); font-family:var(--f-mono); font-weight:700; font-size:18px; margin-top:6px;
+    display:flex; align-items:center; gap:7px; }
+
+  .today-list { display:flex; flex-direction:column; gap:9px; }
+  .today-item { display:flex; gap:9px; align-items:baseline; font-size:15px; color:var(--ink); }
+  .today-item .k { font-family:var(--f-deck); text-transform:uppercase; letter-spacing:.06em; font-size:12px;
+    color:var(--muted); min-width:52px; }
+  .today-item .v b { color:var(--accent); }
+
+  /* Footer */
+  .foot { display:flex; align-items:center; margin-top:16px; }
+  .foot .brand { font-family:var(--f-deck); text-transform:uppercase; letter-spacing:.13em; font-size:13px;
+    color:var(--muted); }
+  .foot .cta { margin-left:auto; font-family:var(--f-deck); text-transform:uppercase; letter-spacing:.08em;
+    font-size:14px; color:var(--accent); font-weight:600; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="wordmark"><span class="the">The</span> Morning Line</div>
+    <div class="dateline" id="dateline"></div>
+  </div>
+  <div class="sub" id="sub"></div>
+  <div class="grid" id="grid"></div>
+
+<!-- The daily runner replaces __COVER_JSON__ with the cover block from dashboard.json.
+     Left untouched, the template falls back to SAMPLE and previews standalone. -->
+<script id="cover-data" type="application/json">__COVER_JSON__</script>
+<script>
+  const SAMPLE = {
+    date_line: "Friday", date_main: "August 28, 2026",
+    greeting: "Good morning, Nick — your feed, at a glance",
+    fantasy: { meta: "Week 1 · PPR", team: "High Park Hurricanes", me: "118.4", opp: "111.9",
+               note: "<b>58%</b> to win · vs Waddle It Out" },
+    jays: { record: "76–58", res: "W", res_kind: "w", score: "6–4", opp: "vs BOS",
+            line1: "Next: <b>7:07 PM vs NYY</b> · Gausman starts",
+            line2: "2nd Wild Card · <span class='g'>+1.5 GB</span>" },
+    portfolio: { total: "$142,380", change: "▲ +0.9% today · +$1,240" },
+    today: [ { k: "Leafs", v: "22 days to training camp" },
+             { k: "PoGO", v: "Magikarp Spotlight <b>6 PM</b>" },
+             { k: "Markets", v: "S&amp;P +0.5% · BTC +1.2%" } ],
+  };
+  function loadCover() {
+    try {
+      const el = document.getElementById("cover-data");
+      const t = (el.textContent || "").trim();
+      if (!t || t === "__COVER_" + "JSON__") return null;   // split so the build never matches this
+      return JSON.parse(t);
+    } catch (e) { console.warn("cover-data parse failed, using sample", e); return null; }
+  }
+  const esc = (s) => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const C = loadCover() || SAMPLE;
+
+  document.getElementById("dateline").innerHTML =
+    (C.date_line ? esc(C.date_line) + " · " : "") + "<b>" + esc(C.date_main) + "</b>";
+  document.getElementById("sub").textContent = C.greeting || "";
+
+  const f = C.fantasy || {}, j = C.jays || {}, p = C.portfolio || {}, today = C.today || [];
+  // f.note / j.line1 / j.line2 / today[].v may contain build-controlled inline HTML (bold, colored spans).
+  const tiles = [
+    `<div class="tile"><div class="eyebrow">Fantasy <span class="meta">${esc(f.meta || "")}</span></div>
+       <div class="teamname">${esc(f.team || "")}</div>
+       <div class="fant-score"><span class="me tnum">${esc(f.me || "—")}</span><span class="vs">VS</span><span class="op tnum">${esc(f.opp || "—")}</span></div>
+       <div class="fant-meta">${f.note || ""}</div></div>`,
+    `<div class="tile"><div class="eyebrow">Blue Jays <span class="meta">${esc(j.record || "")}</span></div>
+       <div class="jays-res"><span class="${esc(j.res_kind || "w")}">${esc(j.res || "")}</span><span class="sc tnum">${esc(j.score || "")}</span><span class="op">${esc(j.opp || "")}</span></div>
+       <div class="line">${j.line1 || ""}</div><div class="line">${j.line2 || ""}</div></div>`,
+    `<div class="tile"><div class="eyebrow">Portfolio</div>
+       <div class="port-val tnum">${esc(p.total || "")}</div>
+       <div class="port-day tnum">${esc(p.change || "")}</div></div>`,
+    `<div class="tile"><div class="eyebrow">Today</div><div class="today-list">${
+       today.map(t => `<div class="today-item"><span class="k">${esc(t.k)}</span><span class="v">${t.v}</span></div>`).join("")
+     }</div></div>`,
+  ];
+  document.getElementById("grid").innerHTML = tiles.join("");
+</script>
+</body>
+</html>

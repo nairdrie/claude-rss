@@ -49,10 +49,13 @@ PORTFOLIO_CONFIG = C.REPO_ROOT / "config" / "portfolio.yaml"
 PORTFOLIO_OUT = C.STATE_DIR / "portfolio.json"
 HISTORY_LOCAL = C.STATE_DIR / "portfolio_history.json"
 
-# Private by default: NOT under feed/*, so the public bucket policy does not
-# expose it. Requires the runtime creds to allow get/put on this key (see the
-# IAM note in docs/s3-access.md). Override with PORTFOLIO_HISTORY_KEY.
-HISTORY_KEY = os.environ.get("PORTFOLIO_HISTORY_KEY", "private/portfolio_history.json")
+# Stored under feed/ (per Nick's call) so it works with the existing creds and
+# public bucket policy — no IAM change needed. NOTE: this makes the *daily total*
+# history publicly readable at a guessable URL. It contains only {date, total,
+# day_change, day_pct} — never per-holding shares or values (those never leave
+# the runner). Point PORTFOLIO_HISTORY_KEY at a private key + prefix if you'd
+# rather keep even the totals private.
+HISTORY_KEY = os.environ.get("PORTFOLIO_HISTORY_KEY", "feed/portfolio_history.json")
 
 YF_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d"
 HISTORY_DAYS = 400          # keep ~13 months of daily snapshots

@@ -1,0 +1,877 @@
+<title>The Morning Line</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* ============================================================
+     THE MORNING LINE — identity tokens
+     Light palette on bare :root; dark redefines tokens only.
+     ============================================================ */
+  :root {
+    --bg: #ECEEF2;
+    --surface: #FFFFFF;
+    --surface-2: #F4F6F9;
+    --inset: #EFF2F6;
+    --ink: #131821;
+    --ink-2: #4C5666;
+    --muted: #8A94A4;
+    --line: #E1E6EC;
+    --line-2: #D3DAE3;
+    --brand: #14263F;        /* navy — masthead, deck */
+    --brand-ink: #14263F;
+    --accent: #C9822B;       /* dawn gold — the one pop */
+    --accent-soft: #F3E4CC;
+    --up: #1C8C55;
+    --down: #C23A2A;
+    --warn: #B0791C;
+    --shadow: 0 1px 2px rgba(19,24,33,.06), 0 6px 18px rgba(19,24,33,.06);
+    --shadow-hover: 0 2px 4px rgba(19,24,33,.08), 0 14px 34px rgba(19,24,33,.10);
+    --radius: 14px;
+    --f-deck: "Oswald", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0A0F18;
+      --surface: #121A27;
+      --surface-2: #172131;
+      --inset: #0E1622;
+      --ink: #E9EEF5;
+      --ink-2: #A7B2C2;
+      --muted: #6C7788;
+      --line: #223047;
+      --line-2: #2C3B54;
+      --brand: #0E1725;
+      --brand-ink: #E9EEF5;
+      --accent: #E5A23C;
+      --accent-soft: #2A2416;
+      --up: #37C67E;
+      --down: #EE6A55;
+      --warn: #D9A63E;
+      --shadow: 0 1px 2px rgba(0,0,0,.34), 0 8px 22px rgba(0,0,0,.34);
+      --shadow-hover: 0 3px 6px rgba(0,0,0,.42), 0 18px 40px rgba(0,0,0,.46);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0A0F18;
+    --surface: #121A27;
+    --surface-2: #172131;
+    --inset: #0E1622;
+    --ink: #E9EEF5;
+    --ink-2: #A7B2C2;
+    --muted: #6C7788;
+    --line: #223047;
+    --line-2: #2C3B54;
+    --brand: #0E1725;
+    --brand-ink: #E9EEF5;
+    --accent: #E5A23C;
+    --accent-soft: #2A2416;
+    --up: #37C67E;
+    --down: #EE6A55;
+    --warn: #D9A63E;
+    --shadow: 0 1px 2px rgba(0,0,0,.34), 0 8px 22px rgba(0,0,0,.34);
+    --shadow-hover: 0 3px 6px rgba(0,0,0,.42), 0 18px 40px rgba(0,0,0,.46);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--f-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    background: var(--brand);
+    color: #EAF0F8;
+    border-bottom: 2px solid var(--accent);
+  }
+  .masthead-inner {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 14px 22px 13px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+  }
+  .wordmark {
+    font-family: var(--f-deck);
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    font-size: 22px;
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    white-space: nowrap;
+  }
+  .wordmark .the { color: var(--accent); font-weight: 500; font-size: 15px; letter-spacing:.18em; }
+  .masthead .dateline {
+    margin-left: auto;
+    font-family: var(--f-deck);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    font-size: 13px;
+    color: #B9C6D8;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .masthead .dateline b { color: #EAF0F8; font-weight: 600; }
+  .preview-badge {
+    font-family: var(--f-deck);
+    font-size: 10.5px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--brand);
+    background: var(--accent);
+    padding: 3px 8px 2px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .tglbtn {
+    appearance: none;
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(255,255,255,.06);
+    color: #EAF0F8;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: grid; place-items: center;
+    font-size: 15px;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .tglbtn:hover { background: rgba(255,255,255,.14); }
+  .tglbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .greetbar {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 16px 22px 2px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .greeting {
+    font-family: var(--f-deck);
+    font-weight: 600;
+    font-size: clamp(24px, 4.4vw, 34px);
+    letter-spacing: .005em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .greeting .accent { color: var(--accent); }
+  .greet-sub { color: var(--muted); font-size: 13px; }
+
+  /* ---------- Layout ---------- */
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 12px 22px 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .col-2 { grid-column: span 2; }
+  @media (max-width: 720px) {
+    .wrap { grid-template-columns: 1fr; }
+    .col-2 { grid-column: span 1; }
+  }
+
+  /* ---------- Card chrome (the constant frame) ---------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 18px;
+    transition: box-shadow .18s ease, transform .18s ease;
+  }
+  .card:hover { box-shadow: var(--shadow-hover); }
+  .card-hd {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 13px;
+  }
+  .eyebrow {
+    font-family: var(--f-deck);
+    text-transform: uppercase;
+    letter-spacing: .13em;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 2px;
+    transform: rotate(45deg);
+    flex: none;
+  }
+  .card-meta {
+    margin-left: auto;
+    font-family: var(--f-deck);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-size: 11.5px;
+    color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .card-meta b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---------- Fantasy hero ---------- */
+  .feature { padding-top: 14px; }
+  .feature { border-top: 3px solid var(--accent); }
+  .feature .eyebrow { font-size: 14px; }
+
+  .matchup {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .team { min-width: 0; }
+  .team.you { text-align: left; }
+  .team.opp { text-align: right; }
+  .team .tname {
+    font-family: var(--f-deck);
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: .01em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .team .trec { font-size: 11.5px; color: var(--muted); font-family: var(--f-mono); }
+  .team .proj {
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 22px;
+    margin-top: 3px;
+    color: var(--ink);
+  }
+  .vs {
+    font-family: var(--f-deck);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .1em;
+    padding: 0 4px;
+  }
+  .winbar-wrap { grid-column: 1 / -1; margin-top: 4px; }
+  .winbar {
+    height: 8px;
+    border-radius: 5px;
+    overflow: hidden;
+    display: flex;
+    background: var(--inset);
+    border: 1px solid var(--line);
+  }
+  .winbar .you-seg { background: var(--accent); }
+  .winbar .opp-seg { background: var(--line-2); }
+  .winbar-labels {
+    display: flex; justify-content: space-between;
+    font-family: var(--f-mono); font-size: 11px; color: var(--ink-2);
+    margin-top: 5px;
+  }
+  .winbar-labels .lead { color: var(--accent); font-weight: 700; }
+
+  .lineup-h, .lineup-row {
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+  .lineup-h {
+    font-family: var(--f-deck);
+    text-transform: uppercase; letter-spacing: .08em;
+    font-size: 10.5px; color: var(--muted);
+    padding: 0 2px 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .lineup-h .r { text-align: right; }
+  .lineup-row {
+    padding: 8px 2px;
+    border-bottom: 1px solid var(--line);
+  }
+  .lineup-row:last-child { border-bottom: 0; }
+  .pos {
+    font-family: var(--f-deck); font-weight: 600; font-size: 12px;
+    color: var(--ink-2);
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    text-align: center; padding: 3px 0;
+    letter-spacing: .03em;
+  }
+  .pos.flex { color: var(--accent); }
+  .pl-main { min-width: 0; }
+  .pl-name {
+    font-weight: 600; font-size: 14px;
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  }
+  .pl-sub { font-size: 11.5px; color: var(--muted); font-family: var(--f-mono); margin-top: 1px; }
+  .pl-note { font-size: 11.5px; color: var(--ink-2); margin-top: 3px; }
+  .pl-proj { font-family: var(--f-mono); font-weight: 600; font-size: 14px; text-align: right; color: var(--ink); }
+
+  .pill {
+    font-family: var(--f-deck);
+    font-size: 10px; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    padding: 2px 6px 1px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .pill.q  { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); border-color: color-mix(in srgb, var(--warn) 34%, transparent); }
+  .pill.d  { color: var(--down); background: color-mix(in srgb, var(--down) 12%, transparent); border-color: color-mix(in srgb, var(--down) 32%, transparent); }
+  .pill.o  { color: #fff; background: var(--down); }
+  .pill.news { color: var(--ink-2); background: var(--inset); border-color: var(--line-2); }
+  .pill.hot { color: var(--up); background: color-mix(in srgb, var(--up) 13%, transparent); border-color: color-mix(in srgb, var(--up) 32%, transparent); }
+
+  .subhead {
+    font-family: var(--f-deck);
+    text-transform: uppercase; letter-spacing: .1em;
+    font-size: 11px; color: var(--muted); font-weight: 600;
+    margin: 16px 0 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .subhead::after { content:""; flex:1; height:1px; background: var(--line); }
+
+  .alert {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .alert:last-child { border-bottom: 0; }
+  .alert .a-main { min-width: 0; }
+  .alert .a-name { font-weight: 600; font-size: 13.5px; }
+  .alert .a-txt { font-size: 12.5px; color: var(--ink-2); }
+  .alert .a-src { font-size: 11px; color: var(--muted); font-family: var(--f-mono); }
+
+  .waiver {
+    display: grid; grid-template-columns: 1fr auto; gap: 6px 12px;
+    padding: 7px 0; border-bottom: 1px dashed var(--line); align-items: center;
+  }
+  .waiver:last-child { border-bottom: 0; }
+  .waiver .w-name { font-weight: 600; font-size: 13.5px; }
+  .waiver .w-sub { font-size: 11.5px; color: var(--muted); font-family: var(--f-mono); }
+  .waiver .w-trend { font-family: var(--f-mono); font-size: 12px; color: var(--up); font-weight: 700; text-align: right; }
+
+  /* ---------- Sports (Jays / Leafs) ---------- */
+  .score-line {
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 3px;
+  }
+  .score-line .res {
+    font-family: var(--f-deck); font-weight: 700; font-size: 15px;
+    padding: 1px 7px; border-radius: 5px; letter-spacing: .04em;
+  }
+  .res.w { color: #fff; background: var(--up); }
+  .res.l { color: #fff; background: var(--down); }
+  .res.otl { color:#fff; background: var(--warn); }
+  .score-line .sc { font-family: var(--f-mono); font-weight: 700; font-size: 20px; }
+  .score-line .vs2 { color: var(--muted); font-size: 13px; }
+  .recap { font-size: 12.5px; color: var(--ink-2); margin: 2px 0 0; }
+  .recap .star { color: var(--accent); font-weight: 600; }
+
+  .nextgame {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 9px; padding: 10px 12px; margin: 12px 0;
+  }
+  .nextgame .ng-when {
+    font-family: var(--f-deck); font-weight: 600; font-size: 13px;
+    text-transform: uppercase; letter-spacing: .04em; text-align:center;
+    color: var(--accent); line-height: 1.15; white-space: nowrap;
+  }
+  .nextgame .ng-when small { display:block; color: var(--muted); font-size: 10.5px; letter-spacing:.06em; }
+  .nextgame .ng-body { font-size: 12.5px; color: var(--ink-2); border-left: 1px solid var(--line-2); padding-left: 12px; }
+  .nextgame .ng-body b { color: var(--ink); }
+
+  .standing {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px; color: var(--ink-2);
+    padding: 9px 12px; border-radius: 9px;
+    background: var(--inset); border: 1px solid var(--line);
+  }
+  .standing .badge {
+    font-family: var(--f-deck); font-weight: 700; font-size: 12px;
+    color: var(--brand-ink); background: var(--accent);
+    padding: 2px 8px; border-radius: 20px; white-space: nowrap;
+  }
+  .standing .gb { font-family: var(--f-mono); font-weight: 700; color: var(--ink); }
+  .news-line { font-size: 12.5px; color: var(--ink-2); margin-top: 11px; padding-left: 12px; position: relative; }
+  .news-line::before { content:""; position:absolute; left:0; top:7px; width:5px; height:5px; border-radius:50%; background: var(--accent); }
+  .news-line .src { color: var(--muted); font-family: var(--f-mono); font-size: 11px; }
+
+  /* offseason state */
+  .offseason { text-align: center; padding: 6px 4px 2px; }
+  .offseason .big {
+    font-family: var(--f-deck); font-weight: 700;
+    font-size: 30px; color: var(--ink);
+  }
+  .offseason .lbl { font-family: var(--f-deck); text-transform: uppercase; letter-spacing:.1em; font-size: 11px; color: var(--muted); }
+  .offseason .countdown { margin: 8px 0 2px; font-family: var(--f-mono); color: var(--accent); font-weight: 700; font-size: 13px; }
+
+  /* ---------- Portfolio ---------- */
+  .port-top { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; }
+  .port-total { font-family: var(--f-mono); font-weight: 700; font-size: 30px; letter-spacing: -.01em; line-height: 1; }
+  .port-day { display: flex; flex-direction: column; gap: 2px; }
+  .port-spark { margin-left: auto; }
+  .table-scroll { overflow-x: auto; }
+  .holdings { width: 100%; border-collapse: collapse; min-width: 380px; }
+  .holdings th {
+    font-family: var(--f-deck); text-transform: uppercase; letter-spacing: .07em;
+    font-size: 10.5px; color: var(--muted); font-weight: 600; text-align: right;
+    padding: 0 0 7px; border-bottom: 1px solid var(--line);
+  }
+  .holdings th:first-child { text-align: left; }
+  .holdings td { padding: 8px 0; border-bottom: 1px solid var(--line); font-family: var(--f-mono); font-size: 13px; text-align: right; }
+  .holdings tr:last-child td { border-bottom: 0; }
+  .holdings td:first-child { text-align: left; font-family: var(--f-body); }
+  .holdings .tkr { font-weight: 700; font-family: var(--f-mono); font-size: 12.5px; }
+  .holdings .co { color: var(--muted); font-size: 11px; }
+
+  .chip {
+    font-family: var(--f-mono); font-weight: 700; font-size: 12px;
+    display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
+  }
+  .chip.up { color: var(--up); }
+  .chip.down { color: var(--down); }
+
+  /* ---------- Strips (Markets + POGO) ---------- */
+  .strip { padding: 13px 18px; }
+  .strip-row {
+    display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+  .tick {
+    flex: 1 0 auto; min-width: 118px;
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 9px 11px; background: var(--surface-2);
+  }
+  .tick .t-name { font-family: var(--f-deck); text-transform: uppercase; letter-spacing: .05em; font-size: 10.5px; color: var(--muted); }
+  .tick .t-val { font-family: var(--f-mono); font-weight: 700; font-size: 15px; margin: 2px 0 3px; }
+
+  .pogo-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px; }
+  .pogo-item {
+    flex: 1 0 auto; min-width: 150px; max-width: 230px;
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 9px 11px; background: var(--surface-2);
+  }
+  .pogo-item .p-tag {
+    font-family: var(--f-deck); text-transform: uppercase; letter-spacing: .07em;
+    font-size: 10px; font-weight: 600; color: var(--accent);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .pogo-item .p-main { font-weight: 600; font-size: 13px; margin: 3px 0 1px; }
+  .pogo-item .p-sub { font-size: 11.5px; color: var(--ink-2); }
+
+  /* ---------- Footer ---------- */
+  .foot {
+    max-width: 1040px; margin: 0 auto; padding: 6px 22px 30px;
+    color: var(--muted); font-size: 11.5px; font-family: var(--f-mono);
+    display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center;
+  }
+  .foot .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+
+  @media (max-width: 520px) {
+    .wordmark { font-size: 18px; }
+    .masthead .dateline { font-size: 11px; }
+    .greetbar { flex-direction: column; align-items: flex-start; gap: 3px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+  .fade { animation: fade .4s ease both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="wordmark"><span class="the">The</span> Morning Line</div>
+    <span class="preview-badge" id="preview-badge" title="This is a design preview populated with sample data">Preview · Sample data</span>
+    <div class="dateline" id="dateline"></div>
+    <button class="tglbtn" id="themeToggle" aria-label="Toggle light or dark theme" title="Toggle theme">◐</button>
+  </div>
+</div>
+
+<div class="greetbar">
+  <h1 class="greeting" id="greeting"></h1>
+  <span class="greet-sub" id="greetSub"></span>
+</div>
+
+<main class="wrap" id="app"></main>
+
+<footer class="foot" id="foot"></footer>
+
+<!-- The daily runner replaces __DASHBOARD_JSON__ with the real dashboard.json.
+     Left untouched, the template falls back to SAMPLE_DATA and previews standalone. -->
+<script id="feed-data" type="application/json">__DASHBOARD_JSON__</script>
+
+<script>
+/* ============================================================
+   DATA — the single slot the daily runner fills each morning.
+   The runner injects real JSON into #feed-data above; standalone,
+   the template falls back to the SAMPLE_DATA below. The framework
+   (render + CSS) never changes.
+   ============================================================ */
+const SAMPLE_DATA = {
+  date: "Friday, August 28, 2026",
+  generatedAt: "6:04 AM ET",
+  greetingName: "Nick",
+  greetingSub: "3 roster alerts · Jays chasing a wild card · markets calm",
+
+  fantasy: {
+    league: "Sunday Scaries",
+    format: "12-team · PPR",
+    week: 1,
+    meta: "Kickoff in 9 days",
+    you:  { name: "High Park Hurricanes", record: "Proj. 2nd", proj: 118.4, winPct: 58 },
+    opp:  { name: "Waddle It Out", record: "Proj. 7th", proj: 111.9, winPct: 42 },
+    starters: [
+      { pos:"QB",  name:"Josh Allen",     team:"BUF", opp:"vs BAL", proj:24.8 },
+      { pos:"RB",  name:"Bijan Robinson", team:"ATL", opp:"vs TB",  proj:19.2 },
+      { pos:"RB",  name:"James Cook",     team:"BUF", opp:"vs BAL", proj:15.6, status:{k:"news", txt:"NEWS"}, note:"Camp buzz: goal-line role looks secure." },
+      { pos:"WR",  name:"Puka Nacua",     team:"LAR", opp:"@ SEA",  proj:16.1, status:{k:"q", txt:"Q"}, note:"Knee — limited Wed/Thu, expected to play." },
+      { pos:"WR",  name:"Nico Collins",   team:"HOU", opp:"vs LV",  proj:15.0 },
+      { pos:"TE",  name:"Dalton Kincaid", team:"BUF", opp:"vs BAL", proj:11.3, status:{k:"hot", txt:"↑ Target share"}, note:"Team-high targets through preseason." },
+      { pos:"FLEX",name:"Jaylen Waddle",  team:"MIA", opp:"@ IND",  proj:13.4, status:{k:"q", txt:"Q"}, note:"Hamstring — trending toward active." },
+      { pos:"K",   name:"Jake Bates",     team:"DET", opp:"vs GB",  proj:8.5 },
+      { pos:"DEF", name:"Bills D/ST",     team:"BUF", opp:"vs BAL", proj:7.2 },
+    ],
+    alerts: [
+      { name:"Puka Nacua", tag:"q", tagTxt:"Q", txt:"Left knee; limited in practice but no setback reported. Monitor Friday's final injury report.", src:"Rotowire · 5h" },
+      { name:"Jaylen Waddle", tag:"q", tagTxt:"Q", txt:"Hamstring tightness. Beat writer expects him to suit up Week 1.", src:"Miami Herald · 8h" },
+      { name:"James Cook", tag:"news", tagTxt:"NEWS", txt:"Bills' staff signaled a bigger passing-down role — modest PPR bump.", src:"The Athletic · 12h" },
+    ],
+    waiver: [
+      { name:"Ray Davis",       sub:"RB · BUF · 41% rostered", trend:"+38%", note:"Cook handcuff" },
+      { name:"Jalen McMillan",  sub:"WR · TB · 22% rostered",  trend:"+61%", note:"Camp riser" },
+      { name:"Tyler Allgeier",  sub:"RB · ATL · 55% rostered", trend:"+19%", note:"Bijan insurance" },
+    ],
+  },
+
+  jays: {
+    inSeason: true,
+    last: { res:"W", score:"6–4", opp:"vs BOS", recap:"Vladdy Jr. went deep twice; Gausman K'd 9 over 7.", star:"Guerrero Jr. 2 HR, 4 RBI" },
+    next: { when:"Today", time:"7:07 PM", opp:"vs NYY", detail:"Probables: <b>Gausman</b> (11–8, 3.42) vs. <b>Rodón</b> (9–7, 3.98)" },
+    standing: { badge:"2nd Wild Card", gb:"+1.5 GB", record:"76–58", note:"1.5 up on NYY for the final spot" },
+    news: { txt:"Bo Bichette (calf) begins a rehab assignment in Buffalo; could return next homestand.", src:"Sportsnet · 3h" },
+  },
+
+  leafs: {
+    inSeason: false,
+    offBig: "22",
+    offLbl: "days to camp",
+    countdown: "Training camp opens Sep 18 · Opener Oct 8 vs MTL",
+    news: { txt:"Leafs sign depth defenceman to a 2-year, $2.2M deal; camp battle brewing on the third pair.", src:"TSN · 1d" },
+  },
+
+  portfolio: {
+    total: 142380.55,
+    dayChange: 1240.18,
+    dayPct: 0.88,
+    week: [138200, 139050, 138640, 140310, 141180, 140960, 142381],
+    note: "Holdings you maintain in config · quotes as of 6:00 AM",
+    holdings: [
+      { tkr:"NVDA",   co:"NVIDIA",            shares:60,  price:182.40, dayPct:1.9,  value:10944 },
+      { tkr:"AAPL",   co:"Apple",             shares:80,  price:241.10, dayPct:0.4,  value:19288 },
+      { tkr:"SHOP.TO",co:"Shopify",           shares:120, price:158.75, dayPct:-0.7, value:19050 },
+      { tkr:"VFV.TO", co:"S&P 500 ETF (CAD)", shares:210, price:152.30, dayPct:0.5,  value:31983 },
+      { tkr:"BTC",    co:"Bitcoin",           shares:0.45,price:114820,  dayPct:1.2,  value:51669 },
+    ],
+  },
+
+  markets: [
+    { name:"S&P 500",  val:"6,412",   pct:0.5 },
+    { name:"Nasdaq",   val:"21,180",  pct:0.8 },
+    { name:"TSX",      val:"25,940",  pct:0.3 },
+    { name:"Gold",     val:"$3,486",  pct:-0.4 },
+    { name:"Bitcoin",  val:"$114.8K", pct:1.2 },
+    { name:"CAD/USD",  val:"0.734",   pct:-0.1 },
+  ],
+
+  pogo: [
+    { icon:"✨", tag:"Spotlight · 6 PM", main:"Magikarp", sub:"2× Catch Candy" },
+    { icon:"⚔️", tag:"5-Star Raids",    main:"Mega Rayquaza", sub:"Best counters: Ice types" },
+    { icon:"🎉", tag:"Event · ends today", main:"Adventure Week", sub:"Rock-types + 2× buddy distance" },
+    { icon:"🔬", tag:"Research",         main:"Field: catch 3 Dragon", sub:"Reward: Dratini encounter" },
+  ],
+};
+
+/* ============================================================
+   FRAMEWORK — constant render layer. Never changes day to day.
+   ============================================================ */
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = (n, d=0) => "$" + n.toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+const signPct = (p) => (p>=0?"+":"−") + Math.abs(p).toFixed(p===Math.round(p)?0:1) + "%";
+
+function pctChip(p) {
+  const up = p >= 0;
+  return `<span class="chip ${up?'up':'down'} tnum">${up?'▲':'▼'} ${signPct(p)}</span>`;
+}
+
+function spark(vals, w=132, h=34) {
+  const min = Math.min(...vals), max = Math.max(...vals), rng = (max-min)||1;
+  const dx = w/(vals.length-1);
+  const pts = vals.map((v,i)=>[+(i*dx).toFixed(1), +(h-2 - ((v-min)/rng)*(h-4)).toFixed(1)]);
+  const line = pts.map(p=>p.join(",")).join(" ");
+  const area = `0,${h} ${line} ${w},${h}`;
+  const up = vals[vals.length-1] >= vals[0];
+  const col = up ? "var(--up)" : "var(--down)";
+  const [ex,ey] = pts[pts.length-1];
+  const gid = "g"+Math.random().toString(36).slice(2,7);
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="${col}" stop-opacity=".22"/>
+      <stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    <polygon points="${area}" fill="url(#${gid})"/>
+    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${ex}" cy="${ey}" r="3" fill="${col}"/>
+  </svg>`;
+}
+
+function statusPill(s) {
+  if (!s) return "";
+  return `<span class="pill ${esc(s.k)}" title="${esc(s.txt)}">${esc(s.txt)}</span>`;
+}
+
+function renderFantasy(f) {
+  const lineup = f.starters.map(p => `
+    <div class="lineup-row">
+      <div class="pos ${p.pos==='FLEX'?'flex':''}">${esc(p.pos)}</div>
+      <div class="pl-main">
+        <div class="pl-name">${esc(p.name)} ${statusPill(p.status)}</div>
+        <div class="pl-sub">${esc(p.team)} · ${esc(p.opp)}</div>
+        ${p.note ? `<div class="pl-note">${esc(p.note)}</div>` : ""}
+      </div>
+      <div class="pl-proj tnum">${p.proj.toFixed(1)}</div>
+    </div>`).join("");
+
+  const alerts = f.alerts.map(a => `
+    <div class="alert">
+      <span class="pill ${esc(a.tag)}">${esc(a.tagTxt)}</span>
+      <div class="a-main">
+        <div class="a-name">${esc(a.name)}</div>
+        <div class="a-txt">${esc(a.txt)}</div>
+        <div class="a-src">${esc(a.src)}</div>
+      </div>
+    </div>`).join("");
+
+  const waiver = f.waiver.map(w => `
+    <div class="waiver">
+      <div><div class="w-name">${esc(w.name)} <span class="pill news">${esc(w.note)}</span></div>
+      <div class="w-sub">${esc(w.sub)}</div></div>
+      <div class="w-trend tnum">${esc(w.trend)}</div>
+    </div>`).join("");
+
+  return `<section class="card feature col-2 fade">
+    <div class="card-hd">
+      <span class="eyebrow">Fantasy — ${esc(f.league)}</span>
+      <span class="card-meta">${esc(f.format)} · Week ${f.week} · <b>${esc(f.meta)}</b></span>
+    </div>
+
+    <div class="matchup">
+      <div class="team you">
+        <div class="tname">${esc(f.you.name)}</div>
+        <div class="trec">${esc(f.you.record)}</div>
+        <div class="proj tnum">${f.you.proj != null ? f.you.proj.toFixed(1) : "—"}</div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="team opp">
+        <div class="tname">${esc(f.opp.name)}</div>
+        <div class="trec">${esc(f.opp.record)}</div>
+        <div class="proj tnum">${f.opp.proj != null ? f.opp.proj.toFixed(1) : "—"}</div>
+      </div>
+      ${(f.you.winPct != null && f.opp.winPct != null) ? `<div class="winbar-wrap">
+        <div class="winbar">
+          <div class="you-seg" style="width:${f.you.winPct}%"></div>
+          <div class="opp-seg" style="width:${f.opp.winPct}%"></div>
+        </div>
+        <div class="winbar-labels">
+          <span class="lead tnum">${f.you.winPct}% win</span>
+          <span class="tnum">${f.opp.winPct}%</span>
+        </div>
+      </div>` : ""}
+    </div>
+
+    <div class="lineup-h"><span>Pos</span><span>Projected starters</span><span class="r">Proj</span></div>
+    ${lineup}
+
+    <div class="subhead">Roster alerts</div>
+    ${alerts}
+
+    <div class="subhead">Waiver watch — trending near your roster</div>
+    ${waiver}
+  </section>`;
+}
+
+function renderJays(j) {
+  return `<section class="card fade">
+    <div class="card-hd">
+      <span class="eyebrow">Blue Jays</span>
+      <span class="card-meta">MLB · <b>${esc(j.standing.record)}</b></span>
+    </div>
+    ${j.last ? `<div class="score-line">
+      <span class="res ${j.last.res==='W'?'w':(j.last.res==='L'?'l':'otl')}">${esc(j.last.res)}</span>
+      <span class="sc tnum">${esc(j.last.score)}</span>
+      <span class="vs2">${esc(j.last.opp)}</span>
+    </div>
+    <p class="recap">${esc(j.last.recap||"")}${j.last.star ? ` <span class="star">★ ${esc(j.last.star)}</span>` : ""}</p>` : ""}
+
+    ${j.next ? `<div class="nextgame">
+      <div class="ng-when">${esc(j.next.when)}<small>${esc(j.next.time)}</small></div>
+      <div class="ng-body">${esc(j.next.opp)}${j.next.detail ? ` · ${j.next.detail}` : ""}</div>
+    </div>` : ""}
+
+    ${j.standing ? `<div class="standing">
+      <span class="badge">${esc(j.standing.badge)}</span>
+      ${j.standing.gb ? `<span class="gb tnum">${esc(j.standing.gb)}</span>` : ""}
+      <span>${esc(j.standing.note)}</span>
+    </div>` : ""}
+
+    ${j.news ? `<p class="news-line">${esc(j.news.txt)}${j.news.src ? ` <span class="src">— ${esc(j.news.src)}</span>` : ""}</p>` : ""}
+  </section>`;
+}
+
+function renderLeafs(l) {
+  if (l.inSeason) {
+    return `<section class="card fade"><div class="card-hd">
+      <span class="eyebrow">Maple Leafs</span><span class="card-meta">NHL</span></div>
+      <p class="recap">In-season module renders the same score / next-game / standings frame as the Jays.</p>
+    </section>`;
+  }
+  return `<section class="card fade">
+    <div class="card-hd">
+      <span class="eyebrow">Maple Leafs</span>
+      <span class="card-meta">NHL · Offseason</span>
+    </div>
+    <div class="offseason">
+      <div class="big tnum">${esc(l.offBig)}</div>
+      <div class="lbl">${esc(l.offLbl)}</div>
+      <div class="countdown">${esc(l.countdown)}</div>
+    </div>
+    ${l.news ? `<p class="news-line">${esc(l.news.txt)}${l.news.src ? ` <span class="src">— ${esc(l.news.src)}</span>` : ""}</p>` : ""}
+  </section>`;
+}
+
+function renderPortfolio(p) {
+  const rows = (p.holdings || []).map(h => `
+    <tr>
+      <td><span class="tkr">${esc(h.tkr)}</span> <span class="co">${esc(h.co)}</span></td>
+      <td class="tnum">${h.shares}</td>
+      <td class="tnum">${money(h.price, h.price<1000?2:0)}</td>
+      <td>${pctChip(h.dayPct)}</td>
+      <td class="tnum">${money(h.value)}</td>
+    </tr>`).join("");
+
+  return `<section class="card col-2 fade">
+    <div class="card-hd">
+      <span class="eyebrow">Portfolio</span>
+      <span class="card-meta">${esc(p.note)}</span>
+    </div>
+    <div class="port-top">
+      <div>
+        <div class="port-total tnum">${money(p.total, 2)}</div>
+      </div>
+      <div class="port-day">
+        <span class="chip ${p.dayChange>=0?'up':'down'} tnum" style="font-size:14px">${p.dayChange>=0?'▲':'▼'} ${money(Math.abs(p.dayChange),2)}</span>
+        <span class="chip ${p.dayPct>=0?'up':'down'} tnum">${signPct(p.dayPct)} today</span>
+      </div>
+      <div class="port-spark">${spark(p.week)}</div>
+    </div>
+    ${(p.holdings && p.holdings.length) ? `<div class="table-scroll"><table class="holdings">
+      <thead><tr><th>Holding</th><th>Shares</th><th>Price</th><th>Day</th><th>Value</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>` : ""}
+  </section>`;
+}
+
+function renderMarkets(m) {
+  const ticks = m.map(t => `
+    <div class="tick">
+      <div class="t-name">${esc(t.name)}</div>
+      <div class="t-val tnum">${esc(t.val)}</div>
+      ${pctChip(t.pct)}
+    </div>`).join("");
+  return `<section class="card strip col-2 fade">
+    <div class="card-hd"><span class="eyebrow">Markets</span><span class="card-meta">Pre-open snapshot</span></div>
+    <div class="strip-row">${ticks}</div>
+  </section>`;
+}
+
+function renderPogo(items) {
+  const cells = items.map(p => `
+    <div class="pogo-item">
+      <div class="p-tag">${p.icon} ${esc(p.tag)}</div>
+      <div class="p-main">${esc(p.main)}</div>
+      <div class="p-sub">${esc(p.sub)}</div>
+    </div>`).join("");
+  return `<section class="card strip col-2 fade">
+    <div class="card-hd"><span class="eyebrow">Pokémon GO — Today</span><span class="card-meta">Local events</span></div>
+    <div class="pogo-row">${cells}</div>
+  </section>`;
+}
+
+function render(d) {
+  document.getElementById("dateline").innerHTML = `<b>${esc(d.date.split(",")[0])}</b> · ${esc(d.date.split(", ").slice(1).join(", "))}`;
+  document.getElementById("greeting").innerHTML = `Good morning, <span class="accent">${esc(d.greetingName)}</span>.`;
+  document.getElementById("greetSub").textContent = d.greetingSub;
+
+  document.getElementById("app").innerHTML = [
+    d.fantasy ? renderFantasy(d.fantasy) : "",
+    d.jays ? renderJays(d.jays) : "",
+    d.leafs ? renderLeafs(d.leafs) : "",
+    d.portfolio ? renderPortfolio(d.portfolio) : "",
+    (d.markets && d.markets.length) ? renderMarkets(d.markets) : "",
+    (d.pogo && d.pogo.length) ? renderPogo(d.pogo) : "",
+  ].join("");
+
+  document.getElementById("foot").innerHTML =
+    `<span>The Morning Line</span><span class="dot"></span>` +
+    `<span>Generated ${esc(d.generatedAt)}</span><span class="dot"></span>` +
+    `<span>Sits atop your RSS feed, refreshed each morning</span>`;
+}
+
+/* theme toggle — lets you preview both palettes */
+(function themeInit(){
+  const btn = document.getElementById("themeToggle");
+  let mode = null; // null = follow system
+  btn.addEventListener("click", () => {
+    const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const cur = mode || (sysDark ? "dark" : "light");
+    mode = cur === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", mode);
+  });
+})();
+
+function loadInjectedData() {
+  try {
+    const el = document.getElementById("feed-data");
+    if (!el) return null;
+    const txt = (el.textContent || "").trim();
+    // Sentinel split so the build's find/replace never matches this line.
+    if (!txt || txt === "__DASHBOARD_" + "JSON__") return null;
+    return JSON.parse(txt);
+  } catch (e) { console.warn("feed-data parse failed, using sample", e); return null; }
+}
+const DATA = loadInjectedData() || SAMPLE_DATA;
+// Real data injected → drop the "sample data" badge (preview-only marker).
+if (DATA !== SAMPLE_DATA) { const b = document.getElementById("preview-badge"); if (b) b.remove(); }
+render(DATA);
+</script>

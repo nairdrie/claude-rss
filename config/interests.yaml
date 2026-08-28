@@ -37,9 +37,20 @@ topics:
 pinned:
   # Injected by build_feed.py -- not sourced from research, not subject to the
   # freshness cutoff or seen.json dedup (same URL every day by design). The
-  # DAILY build pins it to the top of the fresh window; INCREMENTAL builds
-  # leave it in place so the day's additions bury it. Each morning's daily
-  # rebuild puts that day's puzzle back on top.
+  # DAILY build pins these to the top of the fresh window (in list order);
+  # INCREMENTAL builds leave them in place so the day's additions bury them.
+  # Each morning's daily rebuild puts them back on top.
+
+  # The Morning Line dashboard. Its page + cover are (re)rendered each morning
+  # by the morning-line.yml Action at these stable URLs; this pin keeps the item
+  # in the feed across the routine's daily rebuilds. build_pinned gives it a
+  # date-keyed guid, so readers treat each day as a new item.
+  - title: "🌅 The Morning Line"
+    url: "https://nairdrie-rss-feed.s3.us-east-1.amazonaws.com/feed/apps/latest/dashboard.html"
+    source: "The Morning Line"
+    reason: "Your morning dashboard — fantasy, Jays, portfolio, markets, and Pokémon GO."
+    image: "https://nairdrie-rss-feed.s3.us-east-1.amazonaws.com/feed/apps/latest/cover.png"
+
   - title: "Daily Chess Puzzle"
     url: "https://www.chess.com/daily"
     source: "Chess.com"

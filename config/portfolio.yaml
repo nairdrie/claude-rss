@@ -23,11 +23,11 @@ holdings:
   - { symbol: CM.TO,   shares: 15.2914,  currency: CAD, name: "CIBC",                   ref_price: 159.09 }
   - { symbol: DIS,     shares: 4.062,    currency: USD, name: "Disney",                 ref_price: 108.09 }
   - { symbol: ENB.TO,  shares: 18.4742,  currency: CAD, name: "Enbridge",               ref_price: 69.76 }
-  - { symbol: ETC,     shares: 3.3244,   currency: CAD, name: "ETC (unconfirmed)",      ref_price: 14.93, unverified: true }
+  - { symbol: ETC.TO,  shares: 3.3244,   currency: CAD, name: "Evolve Cryptocurrencies ETF", ref_price: 14.93 }
   - { symbol: GOOGL,   shares: 3.0099,   currency: USD, name: "Alphabet",               ref_price: 345.96 }
   - { symbol: HDIV.TO, shares: 67.6534,  currency: CAD, name: "Hamilton Enhanced Multi-Sector Covered Call", ref_price: 24.04 }
   - { symbol: HXQ.TO,  shares: 16,       currency: CAD, name: "Global X Nasdaq-100 Index", ref_price: 117.78 }
-  - { symbol: NEO.TO,  shares: 4.0421,   currency: CAD, name: "Neo Performance Materials (unconfirmed)", ref_price: 32.45, unverified: true }
+  - { symbol: NEO.TO,  shares: 4.0421,   currency: CAD, name: "Neo Performance Materials", ref_price: 32.45 }
   - { symbol: QQQ,     shares: 3.0182,   currency: USD, name: "Invesco QQQ",            ref_price: 716.20 }
   - { symbol: TCMD,    shares: 13,       currency: USD, name: "Tactile Systems",        ref_price: 23.16 }
   - { symbol: VFV.TO,  shares: 116.5689, currency: CAD, name: "Vanguard S&P 500 Index", ref_price: 190.38 }
@@ -37,12 +37,6 @@ holdings:
 # FX symbol used to convert USD positions -> CAD (Yahoo: "CAD=X" == USD/CAD).
 fx_symbol: "CAD=X"
 
-# NOTES / things to confirm:
-#   - ETC  : couldn't identify this from the logo/price ($14.93 CAD, ~flat).
-#            Tell me what it is and I'll set the right symbol.
-#   - NEO  : assumed Neo Performance Materials (NEO.TO). The ticker "NEO" is
-#            easy to confuse with the NEO/Cboe *exchange* — confirm it's the
-#            stock. Price ~$32 CAD fits Neo Performance.
-#   - HXQ/HDIV: Global X & Hamilton total-return/covered-call ETFs. Verified
-#            HDIV.TO resolves on Yahoo; HXQ.TO assumed (same family). The job's
-#            price sanity-check will flag either if the suffix is wrong.
+# All symbols confirmed by Nick (2026-08-28). The daily job still runs a live
+# price sanity-check against ref_price and logs a warning if any symbol drifts
+# far enough to look wrong (e.g. a bad exchange suffix).

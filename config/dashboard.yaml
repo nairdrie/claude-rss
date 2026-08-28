@@ -1,0 +1,48 @@
+# ---------------------------------------------------------------------------
+# Config for the Morning Line daily runner (.github/workflows/morning-line.yml).
+# Portfolio holdings live separately in config/portfolio.yaml.
+# ---------------------------------------------------------------------------
+
+greeting_name: "Nick"
+timezone: "America/Toronto"
+
+fantasy:
+  username: "nairdrie"        # Sleeper username -> auto-discovers league + roster
+  # season: "2026"            # optional; defaults to Sleeper's current NFL season
+  # league_id: "..."          # optional; if you're in >1 league, pin one by id
+  # league_name: "..."        #   ...or by name (case-insensitive)
+
+sports:
+  blue_jays:
+    mlb_team_id: 141          # Toronto Blue Jays (MLB StatsAPI team id)
+  maple_leafs:
+    nhl_team_abbr: "TOR"
+    # Off-season estimates — adjust when the 2026-27 schedule is confirmed.
+    camp_opens: "2026-09-18"
+    season_opener: "2026-10-07"
+    opener_opponent: "MTL"
+
+# Markets strip (Yahoo Finance symbols). Kept small on purpose.
+markets:
+  - { symbol: "^GSPC",    name: "S&P 500" }
+  - { symbol: "^IXIC",    name: "Nasdaq" }
+  - { symbol: "^GSPTSE",  name: "TSX" }
+  - { symbol: "GC=F",     name: "Gold" }
+  - { symbol: "BTC-USD",  name: "Bitcoin" }
+  - { symbol: "CAD=X",    name: "USD/CAD" }
+
+pogo:
+  # Community-maintained event data (ScrapedDuck), reachable without a key.
+  events_url: "https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/events.json"
+  max_items: 4
+
+# The pinned feed item + where the page/thumbnail are served from.
+feed_item:
+  title: "🌅 The Morning Line"
+  source: "The Morning Line"
+  # Stable keys, overwritten in place each morning (date-keyed guid makes readers
+  # treat each day as a new item; the thumbnail URL is date-busted per day).
+  dashboard_key: "feed/apps/latest/dashboard.html"
+  cover_key: "feed/apps/latest/cover.png"
+  # Public base URL for the bucket (matches docs/s3-access.md).
+  public_base: "https://nairdrie-rss-feed.s3.us-east-1.amazonaws.com"
