@@ -231,16 +231,19 @@ def main() -> None:
         state = _get(f"{API}/state/nfl")
         season = str(cfg.get("season") or state.get("season") or "2026")
         season_type = (state.get("season_type") or "regular").lower()
-        # During the preseason, state.week is the PRESEASON week (1-4) and
-        # season_type == "pre" — showing that as "Week 3" is wrong. Use
-        # display_week (the upcoming regular week, = 1 before kickoff) instead.
+        # During the preseason, state.week (and display_week) are the PRESEASON
+        # week (1-4) — showing that as "Week 3" is wrong when the regular season
+        # hasn't kicked off. Force the upcoming regular Week 1 in that case.
+        preseason = season_type not in ("regular", "post")
         if cfg.get("week"):
             week = int(cfg["week"])
-        elif season_type == "pre":
-            week = int(state.get("display_week") or 1) or 1
+        elif preseason:
+            week = 1
         else:
             week = int(state.get("week") or state.get("display_week") or 1) or 1
-        preseason = season_type == "pre"
+        print(f"  Sleeper state: season_type={season_type} week={state.get('week')} "
+              f"display_week={state.get('display_week')} leg={state.get('leg')} -> using week {week}",
+              file=sys.stderr)
 
         user = _get(f"{API}/user/{username}")
         user_id = str(user.get("user_id") or "")
