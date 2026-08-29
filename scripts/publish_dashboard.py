@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from xml.etree import ElementTree as ET
 
 try:
@@ -51,14 +52,19 @@ def _put(client, key: str, body: bytes, content_type: str) -> None:
 def build_item(fi: dict, today: str) -> ET.Element:
     base = fi["public_base"].rstrip("/")
     dash_url = f"{base}/{fi['dashboard_key']}"
-    cover_url = f"{base}/{fi['cover_key']}?d={today}"   # date-bust the thumbnail
+    # Per-build stamp on BOTH the guid and the cover URL. The page/cover objects
+    # are overwritten in place at stable keys, so without this a re-run (or a
+    # same-day rebuild) leaves readers showing the stale cached item + thumbnail.
+    # A fresh stamp makes the reader treat it as updated and re-fetch the image.
+    stamp = int(time.time())
+    cover_url = f"{base}/{fi['cover_key']}?d={today}&v={stamp}"
     source = fi.get("source", "The Morning Line")
 
     item = ET.Element("item")
     ET.SubElement(item, "title").text = f"{fi.get('title', 'The Morning Line')} — {today}"
     ET.SubElement(item, "link").text = dash_url
     guid = ET.SubElement(item, "guid", {"isPermaLink": "false"})
-    guid.text = f"{dash_url}#{today}"
+    guid.text = f"{dash_url}#{today}.{stamp}"
     ET.SubElement(item, "description").text = (
         "Your morning dashboard — fantasy, Blue Jays, portfolio, markets, and Pokémon GO, "
         "refreshed each morning. — Source: " + source)
