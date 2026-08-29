@@ -386,53 +386,42 @@ def arrow(v):
 
 
 def cover_block(data) -> dict:
+    """Bold landscape thumbnail: logo + date, three hero metrics, a stats strip."""
     f, j, p, mk = data["fantasy"], data["jays"], data.get("portfolio"), data["markets"]
-    # fantasy
-    you, opp = f.get("you", {}), f.get("opp", {})
+    lf, pg = data["leafs"], data["pogo"]
+    you, st = f.get("you", {}), j.get("standing") or {}
+
+    metrics = []
     if you.get("winPct") is not None:
-        fnote = f"<b>{you['winPct']}%</b> to win · vs {html.escape(opp.get('name','—'))}"
-    else:
-        fnote = f"Week {f.get('week','')} · vs {html.escape(opp.get('name','—'))}"
-    fant = {"meta": f.get("format") or f"Week {f.get('week','')}",
-            "team": you.get("name", "—"),
-            "me": f"{you['proj']:.1f}" if you.get("proj") is not None else "—",
-            "opp": f"{opp['proj']:.1f}" if opp.get("proj") is not None else "—",
-            "note": fnote}
-    # jays
-    last, nxt, st = j.get("last"), j.get("next"), j.get("standing") or {}
-    jcov = {"record": st.get("record", ""), "res": (last or {}).get("res", ""),
-            "res_kind": {"W": "w", "L": "l"}.get((last or {}).get("res"), "otl"),
-            "score": (last or {}).get("score", ""), "opp": (last or {}).get("opp", ""),
-            "line1": (f"Next: <b>{html.escape((nxt or {}).get('when',''))} {html.escape((nxt or {}).get('time',''))}</b> {html.escape((nxt or {}).get('opp',''))}"
-                      if nxt else ""),
-            "line2": (f"{html.escape(st.get('sbadge',''))}" + (f" · <span class='g'>{html.escape(st.get('gb',''))}</span>" if st.get("gb") else ""))}
-    # portfolio
+        metrics.append({"big": f"{you['winPct']}%", "label": "Fantasy · Win odds", "kind": "accent"})
+    elif you.get("proj") is not None:
+        metrics.append({"big": f"{you['proj']:.0f}", "label": "Fantasy · Projected", "kind": "accent"})
     if p:
-        pcov = {"total": f"${p['total']:,.0f}",
-                "change": f"{arrow(p['dayPct'])} {'+' if p['dayPct']>=0 else '−'}{abs(p['dayPct']):.1f}% today · {'+' if p['dayChange']>=0 else '−'}${abs(p['dayChange']):,.0f}"}
-    else:
-        pcov = {"total": "—", "change": ""}
-    # today
-    today = []
-    lf = data["leafs"]
-    if not lf.get("inSeason"):
-        today.append({"k": "Leafs", "v": f"{lf.get('offBig','')} {lf.get('offLbl','')}"})
-    if data["pogo"]:
-        pg = data["pogo"][0]
-        today.append({"k": "PoGO", "v": html.escape(pg["main"])})
-    if mk:
-        by = {m["name"]: m for m in mk}
-        parts = []
-        for nm in ("S&P 500", "Bitcoin"):
-            if nm in by:
-                m = by[nm]
-                parts.append(f"{'S&amp;P' if nm=='S&P 500' else nm} {'+' if m['pct']>=0 else ''}{m['pct']:.1f}%")
-        if parts:
-            today.append({"k": "Markets", "v": " · ".join(parts)})
+        up = p["dayPct"] >= 0
+        metrics.append({"big": ("+" if up else "−") + f"{abs(p['dayPct']):.1f}%",
+                        "label": "Portfolio · Today", "kind": "up" if up else "down"})
+    last = j.get("last")
+    if last and last.get("res"):
+        won = last["res"] == "W"
+        metrics.append({"big": last.get("score", ""), "label": f"Blue Jays · {'Won' if won else 'Lost'}",
+                        "kind": "up" if won else "down"})
+    elif st.get("record"):
+        metrics.append({"big": st["record"], "label": "Blue Jays · Record", "kind": "ink"})
+
+    footer = []
+    by = {m["name"]: m for m in mk}
+    for nm in ("S&P 500", "Bitcoin"):
+        if nm in by:
+            footer.append({"t": ("S&P " if nm == "S&P 500" else "BTC "),
+                           "b": ("+" if by[nm]["pct"] >= 0 else "−") + f"{abs(by[nm]['pct']):.1f}%"})
+    if not lf.get("inSeason") and lf.get("offBig"):
+        footer.append({"t": "Leafs ", "b": f"{lf['offBig']}d to camp"})
+    if pg:
+        footer.append({"t": "", "b": f"{len(pg)} PoGO events"})
+
     dl = data["date"].split(",")
-    return {"date_line": dl[0], "date_main": ", ".join(dl[1:]).strip(),
-            "greeting": f"Good morning, {data['greetingName']} — {data['greetingSub']}",
-            "fantasy": fant, "jays": jcov, "portfolio": pcov, "today": today}
+    return {"date_line": dl[0], "date_main": dl[1].strip() if len(dl) > 1 else "",
+            "metrics": metrics[:3], "footer": footer}
 
 
 # ---------------------------------------------------------------------------
@@ -460,7 +449,7 @@ def render_cover_png() -> bool:
         return False
     import tempfile
     cmd = [chrome, "--headless=new", "--no-sandbox", "--hide-scrollbars",
-           "--force-device-scale-factor=2", "--window-size=1080,1080",
+           "--force-device-scale-factor=2", "--window-size=1200,760",
            "--virtual-time-budget=3000", f"--user-data-dir={tempfile.mkdtemp()}",
            f"--screenshot={COVER_PNG}", COVER_OUT.as_uri()]
     try:
